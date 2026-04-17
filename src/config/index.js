@@ -20,8 +20,6 @@ if (result.error) {
   }
   // otherwise we silently continue; variables may be provided by the host
 }
-console.log('ENV PATH:', envPath);
-console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID);
 
 // Export the loaded config
 module.exports = {

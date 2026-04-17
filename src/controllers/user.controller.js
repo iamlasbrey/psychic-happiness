@@ -20,10 +20,8 @@ const getUser = asyncHandler(async (req, res) => {
  * @access  Public
  */
 const createUser = asyncHandler(async (req, res) => {
-  const { email, name, password } = req.body;
-
   // the request has already been validated by Joi, redundant checks removed
-  const user = await userService.registerUser(email, name, password);
+  const user = await userService.registerUser(req.body);
 
   // some clients prefer to receive a token upon signup; we can issue one here if
   // desired (omitted for now).

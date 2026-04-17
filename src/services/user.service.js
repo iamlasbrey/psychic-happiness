@@ -23,24 +23,56 @@ const getUserById = async (id) => {
 /**
  * Registers a new user with email and password
  */
-const registerUser = async (email, name, password) => {
-  // 1. Check if user already exists
-  const existingUser = await User.findOne({ where: { email } });
-  if (existingUser) {
-    const error = new Error('Email already in use');
-    error.statusCode = 409; // 409 Conflict
-    throw error;
+const registerUser = async ({
+  name,
+  email,
+  password,
+  whatsappNumber,
+  businessName,
+  role = 'user',
+}) => {
+  const user = await User.findOne({
+    where: { email: email, whatsappNumber: whatsappNumber },
+  });
+
+  // Only check email if it was actually provided
+  if (email) {
+    const existingEmail = await User.findOne({
+      where: { email },
+    });
+
+    if (existingEmail) {
+      throw new Error('A user with this email already exists');
+    }
+  }
+
+  if (!businessName) {
+    throw new Error('businessName is required');
+  }
+
+  if (!password || password.length < 6) {
+    throw new Error(
+      'Password is required and must be at least 6 characters long',
+    );
   }
 
   // 2. Hash the password
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
+  const saltRounds = 10;
+  const hashedPassword = await bcrypt.hash(password, saltRounds);
 
   // 3. Create the user in the database
   const newUser = await User.create({
-    email,
-    name,
-    password: hashedPassword, // Store the hashed password
+    whatsappNumber,
+    businessName,
+    name: name || businessName,
+    email: email || null,
+    password: hashedPassword,
+    role,
+    emailVerified: false, // default
+    phoneVerified: false,
+    isActive: true,
+    onboardingCompleted: false,
+    subscriptionPlan: 'free',
   });
 
   // 4. Return the new user (excluding the password)

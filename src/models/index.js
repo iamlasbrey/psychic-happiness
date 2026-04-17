@@ -1,36 +1,56 @@
 // src/models/index.js
 const User = require('./user.model');
-// const Vault = require('./vault.model');
-// const Witness = require('./witness.model');
-// const Beneficiary = require('./beneficiary.model');
-// const CheckIn = require('./checkin.model');
-// const AuditLog = require('./auditlog.model');
+const Customer = require('./customer.model');
+const Invoice = require('./invoice.model');
 
-// ─── Associations ────────────────────────────────────────────────
+// ─── Define Associations ────────────────────────────────────────────────
 
-// User → Vault entries (one user, many vault items)
-// User.hasMany(Vault, { foreignKey: 'userId', as: 'vaultEntries' });
-// Vault.belongsTo(User, { foreignKey: 'userId', as: 'owner' });
+// === User Associations ===
+User.hasMany(Customer, {
+  foreignKey: 'userId',
+  as: 'customers', // A business owner can have many customers
+  onDelete: 'CASCADE',
+});
 
-// // User → Witnesses (one user, up to 2 witnesses enforced at app layer)
-// User.hasMany(Witness, { foreignKey: 'userId', as: 'witnesses' });
-// Witness.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+User.hasMany(Invoice, {
+  foreignKey: 'userId',
+  as: 'invoices', // A business owner can have many invoices
+  onDelete: 'CASCADE',
+});
 
-// // User → Beneficiaries (one user, one or more beneficiaries)
-// User.hasMany(Beneficiary, { foreignKey: 'userId', as: 'beneficiaries' });
-// Beneficiary.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+// === Customer Associations ===
+Customer.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'owner', // Each customer belongs to one business owner
+});
 
-// // User → CheckIns (full history of ping attempts)
-// User.hasMany(CheckIn, { foreignKey: 'userId', as: 'checkins' });
-// CheckIn.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+Customer.hasMany(Invoice, {
+  foreignKey: 'customerId',
+  as: 'invoices', // One customer can have multiple invoices
+});
 
-// // User → AuditLogs
-// User.hasMany(AuditLog, { foreignKey: 'userId', as: 'auditLogs' });
-// AuditLog.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+// === Invoice Associations ===
+Invoice.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'owner', // Each invoice belongs to one business owner
+});
 
-// ─── Exports ─────────────────────────────────────────────────────
+Invoice.belongsTo(Customer, {
+  foreignKey: 'customerId',
+  as: 'customer', // Each invoice can be linked to a saved customer
+  allowNull: true,
+});
+
+// Optional: If you later add InvoiceItem (line items), you can add here
+// User.hasMany(InvoiceItem, { foreignKey: 'userId', as: 'invoiceItems' });
+// Invoice.hasMany(InvoiceItem, { foreignKey: 'invoiceId', as: 'items' });
+// InvoiceItem.belongsTo(Invoice, { foreignKey: 'invoiceId' });
+
+// ─── Export All Models ─────────────────────────────────────────────────
 
 module.exports = {
   User,
-  // Vault,
+  Customer,
+  Invoice,
+  // Add more models here as you create them (e.g. InvoiceItem later)
 };
