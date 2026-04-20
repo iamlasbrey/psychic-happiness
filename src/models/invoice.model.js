@@ -14,6 +14,7 @@ Invoice.init(
     userId: {
       type: DataTypes.UUID,
       allowNull: false,
+      unique: 'idx_user_invoice_number',
       references: {
         model: 'users',
         key: 'id',
@@ -32,6 +33,7 @@ Invoice.init(
     invoiceNumber: {
       type: DataTypes.STRING(50),
       allowNull: false,
+      unique: 'idx_user_invoice_number',
     },
     firsIRN: {
       type: DataTypes.STRING(100),
@@ -43,9 +45,24 @@ Invoice.init(
       allowNull: true,
     },
     firsStatus: {
-      type: DataTypes.ENUM('pending', 'validated', 'failed'),
+      type: DataTypes.ENUM('pending', 'submitted', 'validated', 'failed'),
       allowNull: false,
       defaultValue: 'pending',
+    },
+    firsErrorMessage: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'Error details from FIRS API if validation failed',
+    },
+    lastFirsAttempt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: 'Last time we tried to validate with FIRS',
+    },
+    firsRetryCount: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
 
     issueDate: {
@@ -88,9 +105,14 @@ Invoice.init(
       allowNull: true,
     },
     paymentStatus: {
-      type: DataTypes.ENUM('unpaid', 'paid', 'overdue'),
+      type: DataTypes.ENUM('unpaid', 'paid'),
       allowNull: false,
       defaultValue: 'unpaid',
+    },
+    paidAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: 'When payment was confirmed',
     },
 
     pdfUrl: {
@@ -107,7 +129,14 @@ Invoice.init(
     modelName: 'Invoice',
     tableName: 'invoices',
     timestamps: true,
-    paranoid: true, // Allow soft delete of invoices if needed
+    paranoid: true,
+    indexes: [
+      {
+        unique: true,
+        fields: ['userId', 'invoiceNumber'],
+        name: 'idx_user_invoice_number',
+      },
+    ],
   },
 );
 

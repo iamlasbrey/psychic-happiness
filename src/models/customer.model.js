@@ -34,6 +34,21 @@ Customer.init(
         is: /^(\+234|0)[789]\d{9}$/,
       },
     },
+    businessName: {
+      type: DataTypes.STRING(150),
+      allowNull: true,
+      comment: 'For B2B customers, their business name',
+    },
+    businessRegistration: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: 'TIN or CAC number if registered',
+    },
+    type: {
+      type: DataTypes.ENUM('individual', 'business'),
+      allowNull: false,
+      defaultValue: 'individual',
+    },
     email: {
       type: DataTypes.STRING,
       allowNull: true,
