@@ -28,6 +28,22 @@ Invoice.init(
         key: 'id',
       },
     },
+    // src/models/invoice.model.js
+    customerName: {
+      type: DataTypes.STRING(150),
+      allowNull: true,
+      comment: 'Customer name at time of invoice creation',
+    },
+    customerPhone: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+      comment: 'Customer phone at time of invoice creation',
+    },
+    customerEmail: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Customer email at time of invoice creation',
+    },
 
     // Core Invoice Info
     invoiceNumber: {

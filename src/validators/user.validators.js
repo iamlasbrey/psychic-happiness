@@ -14,7 +14,7 @@ const userCreateSchema = Joi.object({
     'string.min': 'Password must be at least 8 characters long.',
     'any.required': 'Password is required.',
   }),
-  whatsappNumber: Joi.string()
+  phone: Joi.string()
     .pattern(/^\d{10,15}$/)
     .required()
     .messages({
@@ -42,8 +42,16 @@ const userLoginSchema = Joi.object({
   }),
 });
 
+const refreshTokenSchema = Joi.object({
+  refreshToken: Joi.string().required().trim().messages({
+    'string.empty': 'Refresh token cannot be empty',
+    'any.required': 'Refresh token is required',
+  }),
+});
+
 // Export only the schema
 module.exports = {
   userCreateSchema,
   userLoginSchema,
+  refreshTokenSchema,
 };

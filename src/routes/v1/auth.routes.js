@@ -4,6 +4,7 @@ const validateRequest = require('../../middleware/validateRequest'); // 1. Impor
 const {
   userCreateSchema,
   userLoginSchema,
+  refreshTokenSchema,
 } = require('../../validators/user.validators');
 const { passport } = require('../../config/passport');
 const router = Router();
@@ -34,5 +35,15 @@ router.get(
 // validation middleware runs before the controller
 router.post('/register', validateRequest(userCreateSchema), createUser);
 router.post('/login', validateRequest(userLoginSchema), loginUser);
+// router.post('/refresh', validateRequest(refreshTokenSchema), refreshToken);
+// router.get(
+//   '/google',
+//   passport.authenticate('google', { scope: ['profile', 'email'] }),
+//   router.get(
+//     '/google/callback',
+//     passport.authenticate('google', { failureRedirect: '/login' }),
+//     authController.googleCallback,
+//   ),
+// );
 
 module.exports = router;

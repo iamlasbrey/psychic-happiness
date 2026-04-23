@@ -2,7 +2,7 @@
 const User = require('./user.model');
 const Customer = require('./customer.model');
 const Invoice = require('./invoice.model');
-const InvoiceLineItem = require('./invoicelineitem.model');
+const InvoiceLineItem = require('./InvoiceLineItem .model');
 const AuditLog = require('./auditlog.model');
 
 // ─── Define Associations ────────────────────────────────────────────────

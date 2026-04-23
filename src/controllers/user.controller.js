@@ -1,6 +1,8 @@
 // src/controllers/user.controller.js
 const asyncHandler = require('express-async-handler');
 const userService = require('../services/user.service');
+const jwt = require('jsonwebtoken');
+const config = require('../config'); // Your config file with JWT_SECRET
 
 /**
  * @desc    Get a single user by ID
@@ -31,6 +33,90 @@ const createUser = asyncHandler(async (req, res) => {
     data: { user },
   });
 });
+
+const googleCallback = async (req, res, next) => {
+  try {
+    const user = req.user;
+
+    // Generate tokens
+    const accessToken = jwt.sign({ id: user.id }, config.JWT_SECRET, {
+      expiresIn: '24h',
+    });
+
+    const refreshToken = jwt.sign({ id: user.id }, config.JWT_REFRESH_SECRET, {
+      expiresIn: '7d',
+    });
+
+    // Redirect to frontend with tokens (or return JSON)
+    // For testing, return JSON:
+    res.json({
+      success: true,
+      message: 'Google login successful',
+      data: {
+        id: user.id,
+        email: user.email,
+        businessName: user.businessName,
+        accessToken,
+        refreshToken,
+      },
+    });
+
+    // In production, redirect to frontend:
+    // res.redirect(`http://localhost:3000?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken: token } = req.body;
+
+    // Verify refresh token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, config.JWT_REFRESH_SECRET);
+    } catch (error) {
+      const err = new Error('Invalid or expired refresh token');
+      err.statusCode = 401;
+      throw err;
+    }
+
+    // Verify user still exists
+    const user = await userService.getUserById(decoded.id);
+
+    if (!user) {
+      const err = new Error('User not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    // Generate new access token
+    const accessToken = jwt.sign({ id: decoded.id }, config.JWT_SECRET, {
+      expiresIn: '24h',
+    });
+
+    // Optionally generate new refresh token
+    const newRefreshToken = jwt.sign(
+      { id: decoded.id },
+      config.JWT_REFRESH_SECRET,
+      {
+        expiresIn: '7d',
+      },
+    );
+
+    res.json({
+      success: true,
+      message: 'Token refreshed successfully',
+      data: {
+        accessToken,
+        refreshToken: newRefreshToken,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
@@ -63,5 +149,7 @@ module.exports = {
   getUser,
   createUser,
   loginUser,
+  refreshToken,
+  googleCallback,
   getMyProfile,
 };

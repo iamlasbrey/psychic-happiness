@@ -35,6 +35,7 @@ module.exports = {
   DB_PORT: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : undefined,
 
   JWT_SECRET: process.env.JWT_SECRET,
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN,
 
   // Google OAuth configuration (used by passport)
