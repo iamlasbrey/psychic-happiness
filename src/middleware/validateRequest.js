@@ -19,11 +19,11 @@ const validateRequest = (schema) => {
       const errorMessage = error.details
         .map((detail) => detail.message)
         .join('; ');
-      
+
       // Create an error object with a 400 status code
       const validationError = new Error(errorMessage);
       validationError.statusCode = 400; // Bad Request
-      
+
       // Pass the error to the global error handler
       return next(validationError);
     }

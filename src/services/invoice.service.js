@@ -80,7 +80,7 @@ const createInvoice = async (userId, invoiceData) => {
       customerEmail: resolvedCustomer?.email,
       invoiceNumber,
       issueDate,
-      dueDate,
+      dueDate: resolvedDueDate,
       subTotal,
       vatAmount,
       totalAmount,
@@ -108,6 +108,7 @@ const createInvoice = async (userId, invoiceData) => {
 
     return invoice;
   } catch (error) {
+    console.error('SQL Error:', error.original?.sqlMessage || error.message);
     throw error;
   }
 };
