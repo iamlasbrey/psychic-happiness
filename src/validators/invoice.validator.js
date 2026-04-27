@@ -1,4 +1,3 @@
-// src/schemas/invoice.schema.js
 const Joi = require('joi');
 
 const invoiceCreateSchema = Joi.object({
@@ -22,7 +21,7 @@ const invoiceCreateSchema = Joi.object({
     .when('customerId', {
       is: Joi.exist(),
       then: Joi.optional(),
-      otherwise: Joi.required(), // ✅ Phone required if no customerId
+      otherwise: Joi.required(),
     }),
   customerEmail: Joi.string().email().optional(),
   paymentMethod: Joi.string()
