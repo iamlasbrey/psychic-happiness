@@ -43,4 +43,18 @@ module.exports = {
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL,
   CLIENT_URL: process.env.CLIENT_URL,
+  TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
+  TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
+  TWILIO_WHATSAPP_NUMBER: process.env.TWILIO_WHATSAPP_NUMBER,
+
+  OPENROUTER_API_URL: process.env.OPENROUTER_API_URL,
+  OPENROUTER_MODEL: process.env.OPENROUTER_MODEL,
+  OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+
+  QWEN_FALLBACK_MODEL: process.env.QWEN_FALLBACK_MODEL || 'qwen/qwen-flash', // ✅ Added for fallback
+  AI_CLIENT_URL: process.env.CLIENT_URL || 'https://your-saas-app.com',
+  AI_APP_NAME: process.env.APP_NAME || 'Invoice Parser SaaS',
+  OPENROUTER_FALLBACK_MODEL:
+    process.env.OPENROUTER_FALLBACK_MODEL || 'qwen/qwen-flash',
+  AI_APP_URL: process.env.AI_APP_URL,
 };
