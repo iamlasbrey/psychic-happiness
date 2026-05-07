@@ -31,6 +31,16 @@ const invoiceCreateSchema = Joi.object({
   paymentMeansCode: Joi.string().max(10).optional().default('10'),
   paymentLink: Joi.string().uri().optional(),
   notes: Joi.string().optional(),
+  items: Joi.array()
+    .items(
+      Joi.object({
+        description: Joi.string().max(200).required(),
+        quantity: Joi.number().positive().precision(2).required(),
+        unitPrice: Joi.number().positive().precision(2).required(),
+        amount: Joi.number().positive().precision(2).required(),
+      }),
+    )
+    .optional(),
 });
 
 const invoiceUpdateSchema = Joi.object({

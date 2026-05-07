@@ -50,9 +50,6 @@ router.put(
 // DELETE /invoices/:id - Delete invoice
 router.delete('/:id', authenticate, invoiceController.delete);
 
-// POST /invoices/:id/firs - Submit to FIRS
-router.post('/:id/firs', authenticate, invoiceController.submitToFirs);
-
 // POST /invoices/:id/payment - Record payment
 router.post(
   '/:id/payment',
@@ -62,5 +59,11 @@ router.post(
   ),
   invoiceController.recordPayment,
 );
+
+// POST /invoices/:id/firs - Submit to FIRS
+router.post('/:id/firs', authenticate, invoiceController.submitToFirs);
+
+// GET /invoices/:id/pdf - Download invoice PDF
+router.get('/:id/pdf', authenticate, invoiceController.downloadPdf);
 
 module.exports = router;

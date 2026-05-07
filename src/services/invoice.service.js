@@ -91,6 +91,26 @@ const createInvoice = async (userId, invoiceData) => {
       firsStatus: 'pending',
     });
 
+    // Create line items if provided
+    if (
+      invoiceData.items &&
+      Array.isArray(invoiceData.items) &&
+      invoiceData.items.length > 0
+    ) {
+      const { InvoiceLineItem } = require('../models');
+
+      await InvoiceLineItem.bulkCreate(
+        invoiceData.items.map((item) => ({
+          invoiceId: invoice.id,
+          userId,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          amount: item.amount,
+        })),
+      );
+    }
+
     // Log to audit
     await AuditLog.create({
       userId,

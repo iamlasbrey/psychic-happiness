@@ -18,6 +18,7 @@ app.use(
 // helpers
 app.use(express.json());
 app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
 
 // passport initialization (no sessions in our token-based flow)
 app.use(passport.initialize());

@@ -83,22 +83,6 @@ const deleteInvoice = async (req, res, next) => {
   }
 };
 
-const submitToFirs = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id;
-
-    const result = await invoiceService.submitToFirs(userId, id);
-    res.json({
-      success: true,
-      message: 'Invoice submitted to FIRS',
-      data: result,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 const recordPayment = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -121,10 +105,44 @@ const recordPayment = async (req, res, next) => {
   }
 };
 
+const submitToFirs = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // TO THIS
+    const firsService = require('../services/firs.service');
+    const result = await firsService.submitInvoiceToFirs(userId, id);
+
+    res.json({
+      success: true,
+      message: 'Invoice submitted to FIRS',
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const downloadPdf = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const pdfService = require('../services/pdf.service');
+    const pdfPath = await pdfService.generateInvoicePdf(userId, id);
+
+    res.download(pdfPath);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   create,
   list,
   getById,
+  downloadPdf,
   update,
   delete: deleteInvoice,
   submitToFirs,
