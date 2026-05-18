@@ -43,7 +43,7 @@ const handleIncomingMessage = async (from, messageBody) => {
     // Send confirmation
     await sendWhatsAppMessage(
       from,
-      `Invoice Created!\nInvoice #: ${invoice.invoiceNumber}\nTotal: ₦${data.totalAmount.toFixed(2)}`,
+      `Invoice Created!\nInvoice #: ${invoice.invoiceNumber}\nTotal: ₦${invoice.totalAmount.toFixed(2)}`,
     );
   } catch (error) {
     console.error('Error in handleIncomingMessage:', error);

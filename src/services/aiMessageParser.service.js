@@ -2,6 +2,11 @@
 const axios = require('axios');
 const config = require('../config');
 const { callWithFallback } = require('../utils/openrouter.util');
+const { mockparseInvoiceFromAI } = require('../utils/mock.parser');
+
+const AI_MODE = config.AI_MODE || 'openrouter'; // 'mock' | 'ollama' | 'openrouter'
+
+console.log(`AI_MODE set to "${AI_MODE}"`); // Log the mode for debugging
 
 // UPDATED: OpenRouter configuration
 const OPENROUTER_API_URL =
@@ -20,25 +25,18 @@ const OPENROUTER_HEADERS = {
 const validateInvoiceData = (data) => {
   const errors = [];
 
-  // Required fields only
-  if (!data.customerName || typeof data.customerName !== 'string') {
-    errors.push('customerName required');
-  }
-  if (!data.customerPhone || typeof data.customerPhone !== 'string') {
-    errors.push('customerPhone required');
-  }
+  if (!data.customerPhone?.trim()) errors.push('customerPhone required');
   if (!Array.isArray(data.items) || data.items.length === 0) {
-    errors.push('items required (min 1)');
+    errors.push('items required');
   } else {
     data.items.forEach((item, i) => {
-      if (typeof item.quantity !== 'number' || item.quantity <= 0) {
-        errors.push(`items[${i}].quantity invalid`);
-      }
-      if (typeof item.unitPrice !== 'number' || item.unitPrice <= 0) {
-        errors.push(`items[${i}].unitPrice invalid`);
-      }
+      if (!item.description?.trim())
+        errors.push(`items[${i}].description required`);
+      if (item.quantity <= 0) errors.push(`items[${i}].quantity > 0`);
+      if (item.unitPrice <= 0) errors.push(`items[${i}].unitPrice > 0`);
     });
   }
+  if (data.subTotal <= 0) errors.push('subTotal > 0');
 
   return {
     isValid: errors.length === 0,
@@ -64,44 +62,62 @@ const parseInvoiceFromAI = async (messageBody) => {
       {
         role: 'system',
         content:
-          'You are a precise invoice data extractor. Return ONLY valid JSON. No markdown, no explanations.',
+          'Extract invoice data from WhatsApp message. Return ONLY valid JSON.',
       },
       {
         role: 'user',
-        content: `Parse this WhatsApp invoice message and extract structured data for invoice creation.
+        content: `Parse this WhatsApp message and extract invoice data.
 
 Message: "${messageBody}"
 
-Return JSON with ONLY these fields:
+Return JSON:
 {
-  "customerName": "string",
-  "customerPhone": "string in format +234XXXXXXXXXX",
+  "customerName": "string or null",
+  "customerPhone": "string +234XXXXXXXXXX",
   "items": [
     {
       "description": "string",
       "quantity": number,
       "unitPrice": number,
-      "amount": number (quantity * unitPrice)
+      "amount": number
     }
   ],
-  "subTotal": number (sum of all item amounts),
-  "vatAmount": number (7.5% of subTotal),
-  "totalAmount": number (subTotal + vatAmount)
+  "subTotal": number
 }
 
-If parsing fails, return: { "error": "error message" }`,
+If invalid, return: { "error": "error message" }`,
       },
     ];
 
-    // Call util with fallback and retry logic
-    const content = await callWithFallback(
-      OPENROUTER_API_URL,
-      OPENROUTER_HEADERS,
-      messages,
-      OPENROUTER_MODEL,
-    );
+    // ADD THIS: Mode switch (uses your existing mock util)
+    let content;
 
-    // Parse JSON response
+    if (AI_MODE === 'mock') {
+      const mockResult = await mockparseInvoiceFromAI(messageBody);
+      // Return early with mock result (bypasses API + parsing)
+      return mockResult;
+    }
+
+    if (AI_MODE === 'ollama') {
+      // Use local Ollama endpoint
+      content = await callWithFallback(
+        'http://localhost:11434/v1/chat/completions',
+        { 'Content-Type': 'application/json' },
+        messages,
+        'qwen2.5:1.5b', // Local model name
+      );
+    }
+
+    // Default: OpenRouter (your existing logic)
+    if (AI_MODE === 'openrouter' || !content) {
+      content = await callWithFallback(
+        OPENROUTER_API_URL,
+        OPENROUTER_HEADERS,
+        messages,
+        OPENROUTER_MODEL,
+      );
+    }
+
     let parsed;
     try {
       parsed = JSON.parse(content);
