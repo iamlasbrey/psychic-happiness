@@ -51,10 +51,11 @@ module.exports = {
   OPENROUTER_MODEL: process.env.OPENROUTER_MODEL,
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
 
-  QWEN_FALLBACK_MODEL: process.env.QWEN_FALLBACK_MODEL || 'qwen/qwen-flash', // ✅ Added for fallback
+  QWEN_FALLBACK_MODEL: process.env.QWEN_FALLBACK_MODEL || 'qwen/qwen-flash', //
   AI_CLIENT_URL: process.env.CLIENT_URL || 'https://your-saas-app.com',
   AI_APP_NAME: process.env.APP_NAME || 'Invoice Parser SaaS',
   OPENROUTER_FALLBACK_MODEL:
     process.env.OPENROUTER_FALLBACK_MODEL || 'qwen/qwen-flash',
   AI_APP_URL: process.env.AI_APP_URL,
+  AI_MODE: process.env.AI_MODE || 'openrouter', // 'mock' | 'ollama' | 'openrouter'
 };

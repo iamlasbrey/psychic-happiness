@@ -17,7 +17,7 @@ const submitInvoiceToFirs = async (userId, invoiceId) => {
     invoice.firsRetryCount += 1;
     invoice.firsStatus = 'submitted';
 
-    // ✅ Stub: Generate fake IRN and QR
+    // Generate fake IRN and QR
     invoice.firsIRN = `${invoice.invoiceNumber}-${Date.now()}`;
     invoice.qrCodeUrl = `https://firs.fake/qr/${invoice.firsIRN}`;
     invoice.firsStatus = 'validated';
