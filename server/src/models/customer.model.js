@@ -29,9 +29,16 @@ Customer.init(
     },
     phone: {
       type: DataTypes.STRING(20),
-      allowNull: true,
+      allowNull: false,
       validate: {
-        is: /^(\+234|0)[789]\d{9}$/,
+        customValidator(value) {
+          if (!value) throw new Error('Phone number is required');
+          if (!/^(0|234)[0-9]{10}$|^\+234[0-9]{10}$/.test(value)) {
+            throw new Error(
+              'Phone must be 09012345678, 2348012345678, or +2348012345678',
+            );
+          }
+        },
       },
     },
     businessName: {

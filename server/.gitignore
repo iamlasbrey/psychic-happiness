@@ -1,6 +1,9 @@
 # Node.js dependencies
 node_modules
 notes
+invoices
+scripts
+tests
 
 # Environment variables
 .env
@@ -16,3 +19,8 @@ yarn-error.log*
 
 # Optional build output
 dist
+
+logs/
+*.log
+
+.alpackages/

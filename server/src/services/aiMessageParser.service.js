@@ -3,10 +3,10 @@ const axios = require('axios');
 const config = require('../config');
 const { callWithFallback } = require('../utils/openrouter.util');
 const { mockparseInvoiceFromAI } = require('../utils/mock.parser');
+const invoiceValidator = require('./invoiceValidator.service');
+const logger = require('../config/logger');
 
 const AI_MODE = config.AI_MODE || 'openrouter'; // 'mock' | 'ollama' | 'openrouter'
-
-console.log(`AI_MODE set to "${AI_MODE}"`); // Log the mode for debugging
 
 // UPDATED: OpenRouter configuration
 const OPENROUTER_API_URL =
@@ -25,15 +25,15 @@ const OPENROUTER_HEADERS = {
 const validateInvoiceData = (data) => {
   const errors = [];
 
-  if (!data.customerPhone?.trim()) errors.push('customerPhone required');
+  if (!data.customerPhone?.trim()) errors.push('please provide customer phone');
   if (!Array.isArray(data.items) || data.items.length === 0) {
     errors.push('items required');
   } else {
     data.items.forEach((item, i) => {
       if (!item.description?.trim())
-        errors.push(`items[${i}].description required`);
+        errors.push(`items[${i}].product description required`);
       if (item.quantity <= 0) errors.push(`items[${i}].quantity > 0`);
-      if (item.unitPrice <= 0) errors.push(`items[${i}].unitPrice > 0`);
+      if (item.unitPrice <= 0) errors.push(`items[${i}].unit price > 0`);
     });
   }
   if (data.subTotal <= 0) errors.push('subTotal > 0');
@@ -46,6 +46,10 @@ const validateInvoiceData = (data) => {
 
 const parseInvoiceFromAI = async (messageBody) => {
   try {
+    logger.debug('Parsing message with AI', {
+      messageLength: messageBody.length,
+    });
+
     if (!config.OPENROUTER_API_KEY) {
       throw new Error('OPENROUTER_API_KEY environment variable is not set');
     }
@@ -69,6 +73,8 @@ const parseInvoiceFromAI = async (messageBody) => {
         content: `Parse this WhatsApp message and extract invoice data.
 
 Message: "${messageBody}"
+
+CRITICAL: If this is NOT a sales receipt/invoice, return ONLY: {"error":"not_invoice"}
 
 Return JSON:
 {
@@ -131,23 +137,49 @@ If invalid, return: { "error": "error message" }`,
       }
     }
 
+    if (parsed?.error === 'not_invoice') {
+      logger.info('Message is not an invoice', {
+        messageLength: messageBody.length,
+      });
+      return {
+        success: false,
+        error: 'not_invoice',
+        meta: { skipDraft: true },
+      };
+    }
+
     // Handle AI-level errors
     if (parsed?.error) {
+      logger.warn('AI returned error', { error: parsed.error });
       return { success: false, error: parsed.error };
     }
 
     // Validate data structure
     const validation = validateInvoiceData(parsed);
+    const mathValidation = invoiceValidator.validateInvoiceMath(parsed);
+
+    if (!mathValidation.isValid) {
+      return {
+        success: false,
+        error: `Math validation failed: ${mathValidation.errors.join('; ')}`,
+      };
+    }
+
+    // Use cleaned data
+    return { success: true, data: mathValidation.data };
     if (!validation.isValid) {
+      logger.warn('Message failed validation', { errors: validation.errors });
       return {
         success: false,
         error: `Validation failed: ${validation.errors.join('; ')}`,
       };
     }
-
+    logger.info('Message parsed successfully', {
+      itemCount: parsed.items?.length,
+    });
     return { success: true, data: parsed };
   } catch (error) {
-    console.error('OpenRouter Parser error:', {
+    logger.error('OpenRouter Parser error:', {
       message: error.message,
       status: error.response?.status,
       data: error.response?.data,

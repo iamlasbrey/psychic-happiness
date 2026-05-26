@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const app = express();
 const { passport, configureGoogleStrategy } = require('./config/passport');
 configureGoogleStrategy();
+const redis = require('../src/config/redis');
 
 // security headers & CORS
 app.use(helmet());
@@ -14,6 +15,12 @@ app.use(
     credentials: true,
   }),
 );
+
+// Before routes/server.listen():
+redis.connect().catch((err) => {
+  console.error('[Redis] Startup failed:', err.message);
+  // Optional: process.exit(1) if Redis is critical for your app
+});
 
 // helpers
 app.use(express.json());
