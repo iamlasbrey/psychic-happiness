@@ -4,6 +4,7 @@ const Customer = require('./customer.model');
 const Invoice = require('./invoice.model');
 const InvoiceLineItem = require('./InvoiceLineItem .model');
 const AuditLog = require('./auditlog.model');
+const DraftInvoice = require('./draftinvoice.model');
 
 // ─── Define Associations ────────────────────────────────────────────────
 
@@ -85,6 +86,10 @@ AuditLog.belongsTo(User, {
   as: 'actor',
 });
 
+// Add association
+User.hasMany(DraftInvoice, { foreignKey: 'userId', as: 'draftInvoices' });
+DraftInvoice.belongsTo(User, { foreignKey: 'userId', as: 'owner' });
+
 // ─── Export All Models ─────────────────────────────────────────────────
 
 module.exports = {
@@ -93,4 +98,5 @@ module.exports = {
   Invoice,
   InvoiceLineItem,
   AuditLog,
+  DraftInvoice,
 };

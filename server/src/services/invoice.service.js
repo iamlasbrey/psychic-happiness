@@ -2,10 +2,15 @@
 const { Invoice, InvoiceLineItem, Customer, AuditLog } = require('../models');
 const { Op } = require('sequelize');
 const { generateInvoiceNumber } = require('./../utils/generateInvoice');
+const logger = require('../config/logger');
 // src/services/invoice.service.js - createInvoice function
 
 const createInvoice = async (userId, invoiceData) => {
   try {
+    logger.info('Creating invoice', {
+      userId,
+      itemCount: invoiceData.items.length,
+    });
     const {
       invoiceNumber: providedInvoiceNumber,
       customerPhone,
@@ -18,9 +23,10 @@ const createInvoice = async (userId, invoiceData) => {
       notes,
     } = invoiceData;
 
+    const numSubTotal = parseFloat(subTotal);
     const VAT_RATE = 0.075;
-    const vatAmount = parseFloat((subTotal * VAT_RATE).toFixed(2));
-    const totalAmount = parseFloat((subTotal + vatAmount).toFixed(2));
+    const vatAmount = parseFloat((numSubTotal * VAT_RATE).toFixed(2));
+    const totalAmount = parseFloat((numSubTotal + vatAmount).toFixed(2));
 
     const issueDate = new Date().toISOString().split('T')[0];
     const resolvedDueDate = dueDate
@@ -126,15 +132,23 @@ const createInvoice = async (userId, invoiceData) => {
       },
     });
 
+    logger.info('Invoice created successfully', {
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+    });
     return invoice;
   } catch (error) {
-    console.error('SQL Error:', error.original?.sqlMessage || error.message);
+    logger.error('SQL Error:', {
+      error: error.original?.sqlMessage || error.message,
+      stack: error.stack,
+    });
     throw error;
   }
 };
 
 const listInvoices = async (userId, options = {}) => {
   try {
+    logger.debug('Listing invoices', { userId, filters });
     const { page = 1, limit = 10, status, paymentStatus } = options;
     const offset = (page - 1) * limit;
 
@@ -155,7 +169,7 @@ const listInvoices = async (userId, options = {}) => {
       limit,
       offset,
     });
-
+    logger.info('Invoices retrieved', { userId, count, page });
     return {
       invoices: rows,
       pagination: {
@@ -172,6 +186,7 @@ const listInvoices = async (userId, options = {}) => {
 
 const getInvoiceById = async (userId, invoiceId) => {
   try {
+    logger.debug('Getting invoice', { userId, invoiceId });
     const invoice = await Invoice.findOne({
       where: { id: invoiceId, userId },
       include: ['customer', 'lineItems', 'auditTrail'],
@@ -185,12 +200,18 @@ const getInvoiceById = async (userId, invoiceId) => {
 
     return invoice;
   } catch (error) {
+    logger.error('Failed to get invoice', {
+      userId,
+      invoiceId,
+      error: error.message,
+    });
     throw error;
   }
 };
 
 const updateInvoice = async (userId, invoiceId, updates) => {
   try {
+    logger.info('Updating invoice', { userId, invoiceId });
     const restrictedFields = [
       'customerName',
       'customerPhone',
@@ -214,6 +235,7 @@ const updateInvoice = async (userId, invoiceId, updates) => {
     });
 
     if (!invoice) {
+      logger.warn('Invoice not found for update', { userId, invoiceId });
       const error = new Error('Invoice not found');
       error.statusCode = 404;
       throw error;
@@ -221,6 +243,10 @@ const updateInvoice = async (userId, invoiceId, updates) => {
 
     // Don't allow updates if already validated with FIRS
     if (invoice.firsStatus === 'validated') {
+      logger.warn('Attempted to update validated invoice', {
+        userId,
+        invoiceId,
+      });
       const error = new Error(
         'Cannot update invoice that has been validated by FIRS',
       );
@@ -253,20 +279,27 @@ const updateInvoice = async (userId, invoiceId, updates) => {
           attemptedRestricted.length > 0 ? attemptedRestricted : null,
       },
     });
-
+    logger.info('Invoice updated successfully', { userId, invoiceId });
     return invoice;
   } catch (error) {
+    logger.error('Failed to update invoice', {
+      userId,
+      invoiceId,
+      error: error.message,
+    });
     throw error;
   }
 };
 
 const deleteInvoice = async (userId, invoiceId) => {
   try {
+    logger.info('Deleting invoice', { userId, invoiceId });
     const invoice = await Invoice.findOne({
       where: { id: invoiceId, userId },
     });
 
     if (!invoice) {
+      logger.warn('Invoice not found for delete', { userId, invoiceId });
       const error = new Error('Invoice not found');
       error.statusCode = 404;
       throw error;
@@ -282,7 +315,13 @@ const deleteInvoice = async (userId, invoiceId) => {
       action: 'delete',
       status: 'success',
     });
+    logger.info('Invoice deleted successfully', { userId, invoiceId });
   } catch (error) {
+    logger.error('Failed to delete invoice', {
+      userId,
+      invoiceId,
+      error: error.message,
+    });
     throw error;
   }
 };
@@ -326,6 +365,11 @@ const submitToFirs = async (userId, invoiceId) => {
 
     return invoice;
   } catch (error) {
+    logger.error('Failed to submit invoice to FIRS', {
+      userId,
+      invoiceId,
+      error: error.message,
+    });
     // Log failed attempt
     await AuditLog.create({
       userId,

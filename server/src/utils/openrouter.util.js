@@ -14,7 +14,8 @@ const callWithFallback = async (
     throw new Error('OpenRouter API key not configured');
   }
 
-  const fallbackModel = config.OPENROUTER_FALLBACK_MODEL || 'qwen/qwen-flash';
+  const fallbackModel =
+    config.OPENROUTER_FALLBACK_MODEL || 'qwen/qwen-2.5-7b-instruct';
   const models = [primaryModel, fallbackModel].filter(Boolean);
 
   for (const model of models) {
@@ -43,6 +44,19 @@ const callWithFallback = async (
       } catch (err) {
         const isLastAttempt = attempt === retries;
         const isLastModel = model === models[models.length - 1];
+
+        // ADDED: Defensive handling for invalid model IDs (400 errors)
+        const isInvalidModel =
+          err.response?.status === 400 &&
+          (err.response?.data?.error?.code === 'invalid_model' ||
+            err.response?.data?.error?.message?.includes('not a valid model'));
+
+        if (isInvalidModel) {
+          console.warn(
+            `[OpenRouter] Model "${model}" doesn't exist, skipping to fallback...`,
+          );
+          break; // Skip to next model immediately (no retries for invalid model)
+        }
 
         console.warn(
           `[OpenRouter] Model "${model}" attempt ${attempt + 1}/${retries + 1} failed:`,

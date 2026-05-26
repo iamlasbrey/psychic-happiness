@@ -51,11 +51,20 @@ module.exports = {
   OPENROUTER_MODEL: process.env.OPENROUTER_MODEL,
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
 
-  QWEN_FALLBACK_MODEL: process.env.QWEN_FALLBACK_MODEL || 'qwen/qwen-flash', //
+  QWEN_FALLBACK_MODEL: process.env.QWEN_FALLBACK_MODEL || 'openrouter/auto ', //
   AI_CLIENT_URL: process.env.CLIENT_URL || 'https://your-saas-app.com',
   AI_APP_NAME: process.env.APP_NAME || 'Invoice Parser SaaS',
   OPENROUTER_FALLBACK_MODEL:
-    process.env.OPENROUTER_FALLBACK_MODEL || 'qwen/qwen-flash',
+    process.env.OPENROUTER_FALLBACK_MODEL || 'openrouter/auto ',
   AI_APP_URL: process.env.AI_APP_URL,
   AI_MODE: process.env.AI_MODE || 'openrouter', // 'mock' | 'ollama' | 'openrouter'
+  TWILIO_WEBHOOK_URL: process.env.TWILIO_WEBHOOK_URL,
+
+  CACHE_VERSION: process.env.CACHE_VERSION || 'v1',
+  CACHE_TTL: process.env.CACHE_TTL ? parseInt(process.env.CACHE_TTL, 10) : 3600, // default to 1 hour
+  REDIS_HOST: process.env.REDIS_HOST || 'localhost',
+  REDIS_PORT: process.env.REDIS_PORT
+    ? parseInt(process.env.REDIS_PORT, 10)
+    : 6379,
+  REDIS_PASSWORD: process.env.REDIS_PASSWORD || undefined,
 };
