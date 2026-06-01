@@ -3,7 +3,7 @@ const redis = require('redis');
 const logger = require('./logger');
 const config = require('./index');
 
-// ✅ Redis Cloud: Use URL + TLS + reconnect strategy
+// Redis Cloud: Use URL + TLS + reconnect strategy
 const client = redis.createClient({
   url: config.REDIS_URL, // rediss://default:PASS@host:port
   socket: {
@@ -34,14 +34,14 @@ client.on('end', () => {
   logger.info('Redis connection ended');
 });
 
-// ✅ Explicit connect helper (required for redis@4+)
+//  Explicit connect helper (required for redis@4+)
 const connect = async () => {
   if (!client.isOpen) {
     await client.connect();
   }
 };
 
-// ✅ Graceful shutdown helper
+// Graceful shutdown helper
 const disconnect = async () => {
   if (client.isOpen) {
     await client.quit();
@@ -49,7 +49,7 @@ const disconnect = async () => {
   }
 };
 
-// ✅ Export client + helpers
+//  Export client + helpers
 module.exports = {
   client,
   connect,

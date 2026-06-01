@@ -9,7 +9,7 @@ const tailwindConfig = {
   theme: {
     extend: {
       colors: {
-        primary: {
+        blue: {
           50: '#e8f2f9',
           100: '#d1e5f3',
           200: '#a3cbe7',
@@ -21,7 +21,7 @@ const tailwindConfig = {
           800: '#023976',
           900: '#012361',
         },
-        accent: {
+        orange: {
           50: '#fff5ed',
           100: '#ffebdb',
           200: '#ffd7b7',

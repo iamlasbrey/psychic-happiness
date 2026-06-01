@@ -15,6 +15,15 @@ const QUOTA_EXCEEDED_MSG = (limit) =>
   `Daily invoice limit (${limit}) reached. Please try again tomorrow.`;
 const DAILY_INVOICE_LIMIT = 10;
 
+// Message template for PDF download and portal access
+const PDF_AND_PORTAL_MSG = (invoiceId, invoiceNumber, appUrl, portalUrl) => {
+  const baseUrl = appUrl || 'http://localhost:5000';
+  const dashboardUrl = portalUrl || `${baseUrl}/dashboard`;
+
+  return `📥 Download PDF: ${baseUrl}/api/v1/invoices/${invoiceId}/pdf
+  Manage payments in your account: ${dashboardUrl}`;
+};
+
 const client = twilio(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN);
 
 const checkUserDailyQuota = async (userId) => {
@@ -187,26 +196,14 @@ const handleConfirmation = async (from) => {
       invoiceId: invoice.id,
     });
 
-    // ✅ ADDED: Send "generating" message
-    await sendWhatsAppMessage(
-      from,
-      `✅ Invoice Created!\nInvoice #: ${invoice?.invoiceNumber}\nTotal: ₦${invoice?.totalAmount.toLocaleString()}\n\n📄 Generating PDF...`,
-    );
-
-    // ✅ ADDED: Generate PDF asynchronously
+    //  CHANGED: Generate PDF synchronously (blocking) before sending message
     try {
       const pdfPath = await pdfService.generateInvoicePdf(user.id, invoice.id);
 
-      // ✅ ADDED: Save PDF URL to invoice
+      //  CHANGED: Save PDF URL to invoice
       await invoice.update({
         pdfUrl: `/uploads/invoices/${invoice.invoiceNumber}.pdf`,
       });
-
-      // ✅ ADDED: Send PDF link
-      await sendWhatsAppMessage(
-        from,
-        `📥 PDF Ready!\nDownload: ${config.APP_URL || 'http://localhost:5000'}/api/v1/invoices/${invoice.id}/pdf`,
-      );
 
       logger.info('PDF generated successfully', {
         userId: user.id,
@@ -218,12 +215,13 @@ const handleConfirmation = async (from) => {
         invoiceId: invoice.id,
         error: pdfError.message,
       });
-
-      await sendWhatsAppMessage(
-        from,
-        `⚠️ Invoice created but PDF generation failed. Download later from your account.`,
-      );
     }
+
+    //  CHANGED: Send single message with invoice details + both links
+    await sendWhatsAppMessage(
+      from,
+      `Invoice Created!\nInvoice #: ${invoice?.invoiceNumber}\nTotal: ₦${invoice?.totalAmount.toLocaleString()}\n\n${PDF_AND_PORTAL_MSG(invoice.id, invoice.invoiceNumber, config.APP_URL, config.PORTAL_URL)}`,
+    );
   } catch (error) {
     logger.error('Error in handleConfirmation', {
       error: error.message,
@@ -300,4 +298,5 @@ module.exports = {
   sendWhatsAppMessage,
   QUOTA_EXCEEDED_MSG,
   DAILY_INVOICE_LIMIT,
+  PDF_AND_PORTAL_MSG,
 };

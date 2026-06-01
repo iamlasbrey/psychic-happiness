@@ -67,4 +67,5 @@ module.exports = {
     ? parseInt(process.env.REDIS_PORT, 10)
     : 6379,
   REDIS_PASSWORD: process.env.REDIS_PASSWORD || undefined,
+  PORTAL_URL: process.env.PORTAL_URL || 'http://localhost:3000/dashboard',
 };
