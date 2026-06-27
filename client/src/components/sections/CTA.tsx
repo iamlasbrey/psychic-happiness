@@ -21,10 +21,10 @@ export default function CTA() {
   const isInView = useInView(ref, { once: true, margin: '-100px' });
 
   return (
-    <section className="bg-white py-16 sm:py-20 lg:py-24">
+    <section className="bg-white py-12 sm:py-12 lg:py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6" ref={ref}>
         <motion.div
-          className="relative overflow-hidden rounded-2xl bg-linear-to-r from-blue-500 to-blue-400 px-6 py-16 sm:py-20 lg:py-24 text-center"
+          className="relative overflow-hidden rounded-2xl bg-linear-to-r from-primary-500 to-primary-400 px-6 py-16 sm:py-20 lg:py-24 text-center"
           initial="hidden"
           animate={isInView ? 'visible' : 'hidden'}
           variants={containerVariants}
@@ -47,7 +47,7 @@ export default function CTA() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <a
                 href="/signup"
-                className="inline-block font-semibold text-sm bg-white text-blue-600 px-8 py-3.5 rounded-lg hover:bg-blue-50 transition-colors shadow-lg w-full sm:w-auto text-center"
+                className="inline-block font-semibold text-sm bg-white text-primary-600 px-8 py-3.5 rounded-lg hover:bg-blue-50 transition-colors shadow-lg w-full sm:w-auto text-center"
               >
                 Get started free
               </a>

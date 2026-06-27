@@ -2,6 +2,7 @@
 const asyncHandler = require('express-async-handler');
 const userService = require('../services/user.service');
 const jwt = require('jsonwebtoken');
+const { serializeUser } = require('../utils/userSerializer');
 const config = require('../config'); // Your config file with JWT_SECRET
 
 /**
@@ -34,41 +35,7 @@ const createUser = asyncHandler(async (req, res) => {
   });
 });
 
-const googleCallback = async (req, res, next) => {
-  try {
-    const user = req.user;
-
-    // Generate tokens
-    const accessToken = jwt.sign({ id: user.id }, config.JWT_SECRET, {
-      expiresIn: '24h',
-    });
-
-    const refreshToken = jwt.sign({ id: user.id }, config.JWT_REFRESH_SECRET, {
-      expiresIn: '7d',
-    });
-
-    // Redirect to frontend with tokens (or return JSON)
-    // For testing, return JSON:
-    res.json({
-      success: true,
-      message: 'Google login successful',
-      data: {
-        id: user.id,
-        email: user.email,
-        businessName: user.businessName,
-        accessToken,
-        refreshToken,
-      },
-    });
-
-    // In production, redirect to frontend:
-    // res.redirect(`http://localhost:3000?accessToken=${accessToken}&refreshToken=${refreshToken}`);
-  } catch (error) {
-    next(error);
-  }
-};
-
-const refreshToken = async (req, res, next) => {
+const refreshToken = asyncHandler(async (req, res, next) => {
   try {
     const { refreshToken: token } = req.body;
 
@@ -116,13 +83,13 @@ const refreshToken = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-};
+});
 
 const loginUser = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  const { phoneNumber, password } = req.body;
 
   // validation already performed by middleware
-  const loginResult = await userService.loginUser(email, password);
+  const loginResult = await userService.loginUser(phoneNumber, password);
 
   res.status(200).json({
     status: 'success',
@@ -136,12 +103,12 @@ const loginUser = asyncHandler(async (req, res) => {
  * @route   GET /api/v1/users/profile/me
  * @access  Private
  */
+
 const getMyProfile = asyncHandler(async (req, res) => {
-  // `protect` middleware ensures req.user exists or has already thrown an error
   res.status(200).json({
     status: 'success',
     message: 'Account fetched',
-    data: { user: req.user },
+    data: { user: serializeUser(req.user) },
   });
 });
 
@@ -150,6 +117,5 @@ module.exports = {
   createUser,
   loginUser,
   refreshToken,
-  googleCallback,
   getMyProfile,
 };

@@ -1,4 +1,3 @@
-import Footer from "@/components/layout/Footer";
 import Features from "@/components/sections/Feature";
 import Hero from "@/components/sections/Hero";
 import HowItWorks from "@/components/sections/HowItWorks";
@@ -14,7 +13,6 @@ export default function LandingPage() {
       <HowItWorks />
       <Pricing />
       <CTA />
-      <Footer />
     </div>
   );
 }

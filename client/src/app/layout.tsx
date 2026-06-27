@@ -1,7 +1,8 @@
-// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Poppins, Playfair_Display, Open_Sans } from "next/font/google";
+import { getServerSession } from "next-auth/next";
 import { Toaster } from "sonner";
+import { Providers } from "@/providers";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -25,7 +26,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Nnata — E-invoicing via WhatsApp",
+  title: "Nata — E-invoicing via WhatsApp",
   description: "Send FIRS-compliant invoices on WhatsApp. Get paid faster.",
 };
 
@@ -34,6 +35,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getServerSession();
 
   return (
     <html
@@ -41,8 +43,10 @@ export default async function RootLayout({
       className={`${poppins.variable} ${openSans.variable} ${playfair.variable}`}
     >
       <body className="font-sans antialiased">
+        <Providers session={session}>
           {children}
           <Toaster position="top-right" />
+        </Providers>
       </body>
     </html>
   );

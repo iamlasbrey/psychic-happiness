@@ -3,8 +3,6 @@ const helmet = require('helmet');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const app = express();
-const { passport, configureGoogleStrategy } = require('./config/passport');
-configureGoogleStrategy();
 const redis = require('../src/config/redis');
 
 // security headers & CORS
@@ -26,9 +24,6 @@ redis.connect().catch((err) => {
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
-
-// passport initialization (no sessions in our token-based flow)
-app.use(passport.initialize());
 
 // Import main router
 const mainRouter = require('./routes/index');

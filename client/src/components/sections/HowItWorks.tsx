@@ -76,7 +76,7 @@ export default function HowItWorks() {
           animate={isInView ? 'visible' : 'hidden'}
           variants={headerVariants}
         >
-          <span className="inline-block text-xs font-semibold tracking-widest uppercase text-blue-600 mb-4">
+          <span className="inline-block text-xs font-semibold tracking-widest uppercase text-secondary-800 mb-4">
             How It Works
           </span>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 tracking-tight">
@@ -113,13 +113,13 @@ export default function HowItWorks() {
                 <div className="relative flex-1 flex flex-col bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-8 text-center hover:border-blue-200 hover:shadow-lg hover:shadow-blue-50/50 transition-all duration-300 z-10 mb-6 lg:mb-0">
                   {/* Step Number Badge */}
                   <div className="flex justify-center mb-5">
-                    <div className="relative w-12 h-12 flex items-center justify-center rounded-full bg-blue-500 text-white text-sm font-bold shadow-lg shadow-blue-200 group-hover:scale-110 group-hover:bg-blue-600 transition-all duration-300 z-20">
+                    <div className="relative w-12 h-12 flex items-center justify-center rounded-full bg-primary-500 text-white text-sm font-bold shadow-lg shadow-primary-200 group-hover:scale-110 group-hover:bg-primary-600 transition-all duration-300 z-20">
                       {item.step}
                     </div>
                   </div>
 
                   {/* Content */}
-                  <h3 className="text-base font-bold text-neutral-900 mb-2 group-hover:text-blue-700 transition-colors duration-300">
+                  <h3 className="text-base font-bold text-secondary-800 mb-2 group-hover:primary-blue-500 transition-colors duration-300">
                     {item.title}
                   </h3>
                   <p className="text-sm text-neutral-500 leading-relaxed flex-1 group-hover:text-neutral-600 transition-colors duration-300">

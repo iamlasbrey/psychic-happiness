@@ -39,11 +39,6 @@ Invoice.init(
       allowNull: true,
       comment: 'Customer phone at time of invoice creation',
     },
-    customerEmail: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-      comment: 'Customer email at time of invoice creation',
-    },
 
     // Core Invoice Info
     invoiceNumber: {

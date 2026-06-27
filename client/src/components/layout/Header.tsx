@@ -67,8 +67,8 @@ export default function Header() {
                   href={item.href}
                   className={`text-sm font-semibold transition-colors whitespace-nowrap ${
                     isActive(item.href)
-                      ? 'text-blue-600 border-b-2 border-blue-600 pb-1'
-                      : 'text-neutral-500 hover:text-blue-600'
+                      ? 'text-primary-500 border-b-2 border-primary-500 pb-1'
+                      : 'text-neutral-500 hover:text-primary-500'
                   }`}
                 >
                   {item.label}
@@ -86,7 +86,7 @@ export default function Header() {
           >
             <Link
               href="/signup"
-              className="hidden md:block font-semibold text-sm bg-linear-to-r from-blue-500 to-blue-400 text-white px-5 py-2.5 rounded-lg hover:from-blue-600 hover:to-blue-500 transition-colors"
+              className="hidden md:block font-semibold text-sm bg-linear-to-r from-primary-500 to-primary-400 text-white px-5 py-2.5 rounded-lg hover:from-primary-600 hover:to-primary-500 transition-colors"
             >
               Get started
             </Link>

@@ -11,37 +11,38 @@ User.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    email: {
+    firstName: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+    },
+    lastName: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+    },
+    passwordHash: {
       type: DataTypes.STRING(255),
       allowNull: false,
-      unique: true,
-      validate: {
-        isEmail: true,
-      },
     },
-    phone: {
+    phoneNumber: {
       type: DataTypes.STRING(20),
       allowNull: true,
       validate: {
         is: /^(\+234|0)[789]\d{9}$/,
       },
     },
-    passwordHash: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-    },
     businessName: {
       type: DataTypes.STRING(150),
       allowNull: true,
     },
-    address: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    taxId: {
+    businessRegistrationNumber: {
       type: DataTypes.STRING(50),
       allowNull: true,
-      comment: 'TIN or CAC number for FIRS',
+      unique: 'compositeIndex',
+    },
+    tin: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      unique: 'compositeIndex',
     },
   },
   {
@@ -49,16 +50,9 @@ User.init(
     modelName: 'User',
     tableName: 'users',
     timestamps: true,
-    paranoid: false,
     indexes: [
-      {
-        fields: ['email'],
-        name: 'idx_email',
-      },
-      {
-        fields: ['createdAt'],
-        name: 'idx_createdAt',
-      },
+      { fields: ['phoneNumber'], name: 'idx_phoneNumber' },
+      { fields: ['createdAt'], name: 'idx_createdAt' },
     ],
   },
 );

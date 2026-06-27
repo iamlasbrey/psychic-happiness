@@ -27,7 +27,7 @@ Customer.init(
         len: [2, 150],
       },
     },
-    phone: {
+    customerPhone: {
       type: DataTypes.STRING(20),
       allowNull: false,
       validate: {
@@ -55,11 +55,6 @@ Customer.init(
       type: DataTypes.ENUM('individual', 'business'),
       allowNull: false,
       defaultValue: 'individual',
-    },
-    email: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      validate: { isEmail: true },
     },
     address: {
       type: DataTypes.TEXT,

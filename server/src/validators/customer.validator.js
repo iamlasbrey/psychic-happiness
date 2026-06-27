@@ -13,7 +13,6 @@ const customerCreateSchema = Joi.object({
     .messages({
       'string.pattern.base': 'Phone must be a valid Nigerian number',
     }),
-  email: Joi.string().email().optional(),
   address: Joi.string().optional(),
   businessName: Joi.string().max(150).optional(),
   businessRegistration: Joi.string().max(50).optional(),
@@ -30,7 +29,6 @@ const customerUpdateSchema = Joi.object({
   phone: Joi.string()
     .pattern(/^(\+234|0)[789]\d{9}$/)
     .optional(),
-  email: Joi.string().email().optional(),
   address: Joi.string().optional(),
   businessName: Joi.string().max(150).optional(),
   businessRegistration: Joi.string().max(50).optional(),

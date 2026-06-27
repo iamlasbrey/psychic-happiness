@@ -52,7 +52,7 @@ module.exports = {
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
 
   QWEN_FALLBACK_MODEL: process.env.QWEN_FALLBACK_MODEL || 'openrouter/auto ', //
-  AI_CLIENT_URL: process.env.CLIENT_URL || 'https://your-saas-app.com',
+  AI_CLIENT_URL: process.env.AI_CLIENT_URL || 'https://your-saas-app.com',
   AI_APP_NAME: process.env.APP_NAME || 'Invoice Parser SaaS',
   OPENROUTER_FALLBACK_MODEL:
     process.env.OPENROUTER_FALLBACK_MODEL || 'openrouter/auto ',

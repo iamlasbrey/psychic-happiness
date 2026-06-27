@@ -1,8 +1,8 @@
-// src/services/user.service.js
 const config = require('../config');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
+const { normalizePhoneNumber } = require('../utils/phoneNormalize');
 
 const JWT_SECRET = config.JWT_SECRET;
 const JWT_REFRESH_SECRET = config.JWT_REFRESH_SECRET;
@@ -17,51 +17,83 @@ if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
  * Register a new user
  */
 const registerUser = async (userData) => {
-  const { email, password, phone, businessName, address, taxId } = userData;
+  const {
+    firstName,
+    lastName,
+    password,
+    phoneNumber,
+    businessName,
+    businessRegistrationNumber,
+    address,
+    tin,
+  } = userData;
 
-  const existingUser = await User.findOne({
-    where: { email },
-  });
+  // 1. Normalize the phone
+  const normalizedPhone = normalizePhoneNumber(phoneNumber);
 
-  if (existingUser) {
-    const error = new Error('Email already registered');
-    error.statusCode = 400;
-    throw error;
+  // 2. Perform INDIVIDUAL lookups
+  const [userByPhone, userByTin, userByBusiness] = await Promise.all([
+    User.findOne({
+      where: { phoneNumber: normalizedPhone },
+      attributes: ['phoneNumber'],
+    }),
+    tin ? User.findOne({ where: { tin }, attributes: ['tin'] }) : null,
+    businessRegistrationNumber
+      ? User.findOne({
+          where: { businessRegistrationNumber },
+          attributes: ['businessRegistrationNumber'],
+        })
+      : null,
+  ]);
+
+  // 3. Evaluate each individually
+  if (userByPhone) {
+    throw new Error('Phone number already registered');
+  }
+
+  if (userByTin) {
+    throw new Error('TIN already registered');
+  }
+
+  if (userByBusiness) {
+    throw new Error('Business registration number already registered');
   }
 
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(password, salt);
 
   const user = await User.create({
-    email,
     passwordHash,
-    phone,
+    phoneNumber: normalizedPhone,
+    firstName,
+    lastName,
     businessName,
     address,
-    taxId,
+    businessRegistrationNumber,
+    tin,
   });
 
   const tokens = generateTokens(user.id);
 
   return {
     id: user.id,
-    email: user.email,
-    phone: user.phone,
+    phoneNumber: user.phoneNumber,
     businessName: user.businessName,
     ...tokens,
   };
 };
 
 /**
- * Login user with email and password
+ * Login user with phone and password
  */
-const loginUser = async (email, password) => {
+const loginUser = async (phoneNumber, password) => {
+  const normalizedPhone = normalizePhoneNumber(phoneNumber);
   const user = await User.findOne({
-    where: { email },
+    where: { phoneNumber: normalizedPhone },
   });
 
   if (!user) {
-    const error = new Error('Invalid email or password');
+    const error = new Error('Invalid phone or password');
     error.statusCode = 401;
     throw error;
   }
@@ -69,7 +101,7 @@ const loginUser = async (email, password) => {
   const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
   if (!isPasswordValid) {
-    const error = new Error('Invalid email or password');
+    const error = new Error('Invalid phone or password');
     error.statusCode = 401;
     throw error;
   }
@@ -78,8 +110,7 @@ const loginUser = async (email, password) => {
 
   return {
     id: user.id,
-    email: user.email,
-    phone: user.phone,
+    phoneNumber: user.phoneNumber,
     businessName: user.businessName,
     ...tokens,
   };

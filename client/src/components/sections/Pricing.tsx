@@ -92,7 +92,7 @@ export default function Pricing() {
   const isInView = useInView(ref, { once: true, margin: '-100px' });
 
   return (
-    <section id="pricing" className="bg-white py-20 sm:py-28 lg:py-32">
+    <section id="pricing" className="bg-white py-12 sm:py-12 lg:py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6" ref={ref}>
         {/* Section Header */}
         <motion.div
@@ -101,7 +101,7 @@ export default function Pricing() {
           animate={isInView ? 'visible' : 'hidden'}
           variants={headerVariants}
         >
-          <span className="inline-block text-xs font-semibold tracking-widest uppercase text-blue-600 mb-4">
+          <span className="inline-block text-xs font-semibold tracking-widest uppercase text-secondary-800 mb-4">
             Pricing
           </span>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 tracking-tight">
@@ -133,7 +133,7 @@ export default function Pricing() {
               {/* Popular Badge */}
               {plan.highlighted && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="inline-block bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                  <span className="inline-block bg-secondary-800 text-white text-xs font-bold px-3 py-1 rounded-full">
                     Popular
                   </span>
                 </div>
@@ -145,7 +145,7 @@ export default function Pricing() {
                   {plan.name}
                 </h3>
                 <div className="flex items-baseline justify-center gap-1">
-                  <span className="text-3xl sm:text-4xl font-bold text-blue-600">
+                  <span className="text-3xl sm:text-4xl font-bold text-secondary-800">
                     {plan.price}
                   </span>
                 </div>
@@ -186,8 +186,8 @@ export default function Pricing() {
                 href="/signup"
                 className={`block w-full text-center font-semibold text-sm px-6 py-3 rounded-lg transition-colors ${
                   plan.highlighted
-                    ? 'bg-blue-500 text-white hover:bg-blue-600'
-                    : 'border border-blue-500 text-blue-600 hover:bg-blue-50'
+                    ? 'bg-secondary-800 text-white hover:bg-secondary-600'
+                    : 'border border-secondary-500 text-secondary-600 hover:bg-secondary-50'
                 }`}
               >
                 {plan.cta}

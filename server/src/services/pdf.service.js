@@ -56,7 +56,6 @@ const generateInvoicePdf = async (userId, invoiceId) => {
     doc.fontSize(10).font('Helvetica');
     doc.text(`${invoice.customerName}`);
     doc.text(`${invoice.customerPhone}`);
-    doc.text(`${invoice.customerEmail || 'N/A'}`);
 
     // QR Code
     if (invoice.qrCodeUrl) {

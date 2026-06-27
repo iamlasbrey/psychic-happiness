@@ -23,7 +23,6 @@ const invoiceCreateSchema = Joi.object({
       then: Joi.optional(),
       otherwise: Joi.required(),
     }),
-  customerEmail: Joi.string().email().optional(),
   paymentMethod: Joi.string()
     .valid('cash', 'bank_transfer', 'online')
     .optional()

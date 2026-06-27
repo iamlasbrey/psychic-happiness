@@ -39,7 +39,7 @@ export default function Hero() {
             >
               <motion.a
                 href="/signup"
-                className="inline-flex items-center justify-center font-semibold text-sm bg-linear-to-r from-blue-500 to-blue-400 text-white px-6 py-3 rounded-lg hover:from-blue-600 hover:to-blue-500 transition-colors"
+                className="inline-flex items-center justify-center font-semibold text-sm bg-linear-to-r from-primary-500 to-primary-400 text-white px-6 py-3 rounded-lg hover:from-primary-600 hover:to-primary-500 transition-colors"
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.98 }}
               >

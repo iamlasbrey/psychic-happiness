@@ -2,40 +2,48 @@ const Joi = require('joi');
 
 // Define the schema for creating a user
 const userCreateSchema = Joi.object({
-  email: Joi.string().email().required().messages({
-    'string.email': 'Please provide a valid email address.',
-    'any.required': 'Email is required.',
+  firstName: Joi.string().min(2).required().messages({
+    'string.min': 'First name must be at least 2 characters long.',
+    'any.required': 'First name is required.',
   }),
-  name: Joi.string().min(2).required().messages({
-    'string.min': 'Name must be at least 2 characters long.',
-    'any.required': 'Name is required.',
+  lastName: Joi.string().min(2).required().messages({
+    'string.min': 'Last name must be at least 2 characters long.',
+    'any.required': 'Last name is required.',
   }),
   password: Joi.string().min(8).required().messages({
     'string.min': 'Password must be at least 8 characters long.',
     'any.required': 'Password is required.',
   }),
-  phone: Joi.string()
-    .pattern(/^\d{10,15}$/)
+  phoneNumber: Joi.string()
+    .trim() // Removes accidental whitespace
+    // Regex: Optional '+234' or '234' or '0', followed by 7, 8, or 9, then 9 digits
+    .pattern(/^(\+234|234|0)?[789]\d{9}$/)
     .required()
     .messages({
       'string.pattern.base':
-        'WhatsApp number must be between 10 and 15 digits.',
-      'any.required': 'WhatsApp number is required.',
+        'Phone number must be a valid Nigerian mobile format (e.g., 08012345678 or 2348012345678).',
+      'any.required': 'Phone number is required.',
     }),
   businessName: Joi.string().min(2).required().messages({
     'string.min': 'Business name must be at least 2 characters long.',
     'any.required': 'Business name is required.',
   }),
+  businessRegistrationNumber: Joi.string().optional(),
+  tin: Joi.string().optional(),
   role: Joi.string().valid('user', 'admin').default('user').messages({
     'any.only': 'Role must be either "user" or "admin".',
   }),
 });
 
 const userLoginSchema = Joi.object({
-  email: Joi.string().email().required().messages({
-    'string.email': 'Please provide a valid email address.',
-    'any.required': 'Email is required.',
-  }),
+  phoneNumber: Joi.string()
+    .pattern(/^(\+234|0)[789]\d{9}$/)
+    .required()
+    .messages({
+      'string.pattern.base':
+        'WhatsApp number must be between 10 and 15 digits.',
+      'any.required': 'WhatsApp number is required.',
+    }),
   password: Joi.string().min(8).required().messages({
     'string.min': 'Password must be at least 8 characters long.',
     'any.required': 'Password is required.',

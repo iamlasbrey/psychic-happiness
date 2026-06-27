@@ -1,15 +1,59 @@
 @import "tailwindcss";
 
+@theme {
+  /* Your custom colors */
+  --color-primary-50: #e8f2f9;
+  --color-primary-100: #d1e5f3;
+  --color-primary-200: #a3cbe7;
+  --color-primary-300: #75b1db;
+  --color-primary-400: #4797cf;
+  --color-primary-500: #057BB5;
+  --color-primary-600: #0465a0;
+  --color-primary-700: #034f8b;
+  --color-primary-800: #023976;
+  --color-primary-900: #012361;
+
+  --color-secondary-50: #fff5ed;
+  --color-secondary-100: #ffebdb;
+  --color-secondary-200: #ffd7b7;
+  --color-secondary-300: #ffc393;
+  --color-secondary-400: #ffaf6f;
+  --color-secondary-500: #FF9E69;
+  --color-secondary-600: #ff8a45;
+  --color-secondary-700: #ff7621;
+  --color-secondary-800: #e6620e;
+  --color-secondary-900: #cc5607;
+
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-200: #eeeeee;
+  --color-neutral-300: #d9d9d9;
+  --color-neutral-400: #bdbdbd;
+  --color-neutral-500: #9e9e9e;
+  --color-neutral-600: #757575;
+  --color-neutral-700: #626262;
+  --color-neutral-800: #424242;
+  --color-neutral-900: #212121;
+
+  /* Fonts */
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
+
+  /* Border radius */
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +66,4 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }

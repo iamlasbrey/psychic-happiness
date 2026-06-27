@@ -83,7 +83,6 @@ const createInvoice = async (userId, invoiceData) => {
       customerId: resolvedCustomerId,
       customerName: customerName || resolvedCustomer?.name,
       customerPhone: customerPhone || resolvedCustomer?.phone,
-      customerEmail: resolvedCustomer?.email,
       invoiceNumber,
       issueDate,
       dueDate: resolvedDueDate,
@@ -212,12 +211,7 @@ const getInvoiceById = async (userId, invoiceId) => {
 const updateInvoice = async (userId, invoiceId, updates) => {
   try {
     logger.info('Updating invoice', { userId, invoiceId });
-    const restrictedFields = [
-      'customerName',
-      'customerPhone',
-      'customerEmail',
-      'customerId',
-    ];
+    const restrictedFields = ['customerName', 'customerPhone', 'customerId'];
     const attemptedRestricted = restrictedFields.filter(
       (field) => field in updates,
     );

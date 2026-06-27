@@ -93,7 +93,7 @@ export default function Features() {
           animate={isInView ? 'visible' : 'hidden'}
           variants={headerVariants}
         >
-          <span className="inline-block text-xs font-semibold tracking-widest uppercase text-blue-600 mb-4">
+          <span className="inline-block text-xs font-semibold tracking-widest uppercase text-secondary-800 mb-4">
             Features
           </span>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 tracking-tight">
@@ -121,10 +121,10 @@ export default function Features() {
               >
                 <div className="absolute inset-0 rounded-2xl bg-linear-to-br from-blue-50/0 via-blue-50/0 to-blue-50/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                 <div className="relative flex flex-col items-center sm:items-start">
-                  <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-blue-50 text-blue-600 mb-5 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+                  <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-blue-50 text-primary-500 mb-5 group-hover:bg-primary-500 group-hover:text-white transition-colors duration-300">
                     <IconComponent />
                   </div>
-                  <h3 className="text-base font-bold text-neutral-900 mb-2 group-hover:text-blue-700 transition-colors duration-300">
+                  <h3 className="text-base font-bold text-neutral-900 mb-2 group-hover:text-secondary-800 transition-colors duration-300">
                     {feature.title}
                   </h3>
                   <p className="text-sm text-neutral-500 leading-relaxed group-hover:text-neutral-600 transition-colors duration-300">
