@@ -75,7 +75,11 @@ Invoice.init(
       allowNull: false,
       defaultValue: 0,
     },
-
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'Brief description of the goods or services',
+    },
     issueDate: {
       type: DataTypes.DATEONLY,
       allowNull: false,

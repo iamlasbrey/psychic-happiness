@@ -7,7 +7,7 @@ const customerCreateSchema = Joi.object({
     'string.max': 'Customer name cannot exceed 150 characters',
     'any.required': 'Customer name is required',
   }),
-  phone: Joi.string()
+  customerPhone: Joi.string()
     .pattern(/^(\+234|0)[789]\d{9}$/)
     .optional()
     .messages({
@@ -26,7 +26,7 @@ const customerCreateSchema = Joi.object({
 
 const customerUpdateSchema = Joi.object({
   name: Joi.string().min(2).max(150).optional(),
-  phone: Joi.string()
+  customerPhone: Joi.string()
     .pattern(/^(\+234|0)[789]\d{9}$/)
     .optional(),
   address: Joi.string().optional(),

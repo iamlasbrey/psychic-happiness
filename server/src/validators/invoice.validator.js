@@ -2,18 +2,11 @@ const Joi = require('joi');
 
 const invoiceCreateSchema = Joi.object({
   customerId: Joi.string().uuid().optional(),
-  invoiceNumber: Joi.string().max(50).optional().messages({
-    'string.max': 'Invoice number cannot exceed 50 characters',
-  }),
-  issueDate: Joi.date().optional().messages({
-    'any.required': 'Issue date is required',
-  }),
+  invoiceNumber: Joi.string().max(50).optional(),
+  issueDate: Joi.date().optional(),
   dueDate: Joi.date().optional(),
   subTotal: Joi.number().positive().precision(2).required(),
-  totalAmount: Joi.number().positive().precision(2).optional().messages({
-    'number.positive': 'Total amount must be greater than 0',
-    'any.required': 'Total amount is required',
-  }),
+  totalAmount: Joi.number().positive().precision(2).optional(),
   customerName: Joi.string().max(150).optional(),
   customerPhone: Joi.string()
     .pattern(/^(\+234|0)[789]\d{9}$/)
@@ -30,6 +23,8 @@ const invoiceCreateSchema = Joi.object({
   paymentMeansCode: Joi.string().max(10).optional().default('10'),
   paymentLink: Joi.string().uri().optional(),
   notes: Joi.string().optional(),
+  // Add description - auto-built from items or provided directly
+  description: Joi.string().max(500).optional(),
   items: Joi.array()
     .items(
       Joi.object({
@@ -40,7 +35,7 @@ const invoiceCreateSchema = Joi.object({
       }),
     )
     .optional(),
-});
+}).min(1);
 
 const invoiceUpdateSchema = Joi.object({
   customerId: Joi.string().uuid().optional(),

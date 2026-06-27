@@ -28,11 +28,9 @@ InvoiceLineItem.init(
       },
     },
     description: {
+      // ← Make sure this exists
       type: DataTypes.STRING(200),
       allowNull: false,
-      validate: {
-        notEmpty: true,
-      },
     },
     quantity: {
       type: DataTypes.DECIMAL(10, 2),
