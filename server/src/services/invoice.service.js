@@ -153,11 +153,18 @@ const createInvoice = async (userId, invoiceData) => {
 
 const listInvoices = async (userId, options = {}) => {
   try {
-    logger.debug('Listing invoices', { userId, filters });
-    const { page = 1, limit = 10, status, paymentStatus } = options;
+    const { page = 1, limit = 10, status, paymentStatus, q } = options;
     const offset = (page - 1) * limit;
 
     const where = { userId };
+
+    if (q && q.trim()) {
+      where[Op.or] = [
+        { invoiceNumber: { [Op.like]: `%${q}%` } }, // ✅ CHANGED: iLike → like
+        { customerName: { [Op.like]: `%${q}%` } },
+        { customerPhone: { [Op.like]: `%${q}%` } },
+      ];
+    }
 
     if (status) {
       where.firsStatus = status;
@@ -167,6 +174,14 @@ const listInvoices = async (userId, options = {}) => {
       where.paymentStatus = paymentStatus;
     }
 
+    logger.debug('Listing invoices', {
+      userId,
+      q,
+      status,
+      paymentStatus,
+      page,
+    });
+
     const { count, rows } = await Invoice.findAndCountAll({
       where,
       include: ['customer'],
@@ -174,7 +189,7 @@ const listInvoices = async (userId, options = {}) => {
       limit,
       offset,
     });
-    logger.info('Invoices retrieved', { userId, count, page });
+    logger.info('Invoices retrieved', { userId, count, page, searchQuery: q });
     return {
       invoices: rows,
       pagination: {

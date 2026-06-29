@@ -18,13 +18,14 @@ const create = async (req, res, next) => {
 const list = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { page = 1, limit = 10, status, paymentStatus } = req.query;
+    const { page = 1, limit = 10, status, paymentStatus, q } = req.query;
 
     const result = await invoiceService.listInvoices(userId, {
       page: parseInt(page),
       limit: parseInt(limit),
       status,
       paymentStatus,
+      q,
     });
 
     res.json({

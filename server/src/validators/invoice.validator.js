@@ -58,6 +58,7 @@ const invoiceFilterSchema = Joi.object({
   endDate: Joi.date().optional(),
   page: Joi.number().min(1).optional().default(1),
   limit: Joi.number().min(1).max(100).optional().default(10),
+  q: Joi.string().max(100).trim(),
 });
 
 module.exports = {
