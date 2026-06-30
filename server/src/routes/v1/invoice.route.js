@@ -36,6 +36,8 @@ router.get(
   invoiceController.list,
 );
 
+router.get('/stats', authenticate, invoiceController.stats);
+
 // GET /invoices/:id - Get single invoice
 router.get('/:id', authenticate, invoiceController.getById);
 
