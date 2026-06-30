@@ -9,19 +9,24 @@ const draftService = require('./draftInvoice.service');
 const logger = require('../config/logger');
 const { sanitizeWhatsAppMessage } = require('../utils/sanitizer');
 const { Op } = require('sequelize');
-const pdfService = require('./pdf.service'); // ✅ ADDED: PDF import
+const pdfService = require('./pdf.service');
+const { withTimeout } = require('../utils/timeout.util'); // ✅ NEW: Timeout utility
 
 const QUOTA_EXCEEDED_MSG = (limit) =>
   `Daily invoice limit (${limit}) reached. Please try again tomorrow.`;
 const DAILY_INVOICE_LIMIT = 10;
 
-// Message template for PDF download and portal access
+// ✅ NEW: Timeout constants (in milliseconds)
+const TWILIO_TIMEOUT = 30000; // 30 seconds
+const PDF_TIMEOUT = 60000; // 60 seconds
+
 const PDF_AND_PORTAL_MSG = (invoiceId, invoiceNumber, appUrl, portalUrl) => {
   const baseUrl = appUrl || 'http://localhost:5000';
   const dashboardUrl = portalUrl || `${baseUrl}/dashboard`;
 
   return `📥 Download PDF: ${baseUrl}/api/v1/invoices/${invoiceId}/pdf
-  Manage payments in your account: ${dashboardUrl}`;
+
+Manage payments in your account: ${dashboardUrl}`;
 };
 
 const client = twilio(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN);
@@ -196,11 +201,14 @@ const handleConfirmation = async (from) => {
       invoiceId: invoice.id,
     });
 
-    //  CHANGED: Generate PDF synchronously (blocking) before sending message
+    // ✅ CHANGED: Wrap PDF generation with timeout
     try {
-      const pdfPath = await pdfService.generateInvoicePdf(user.id, invoice.id);
+      const pdfPath = await withTimeout(
+        pdfService.generateInvoicePdf(user.id, invoice.id),
+        PDF_TIMEOUT,
+        'PDF generation',
+      );
 
-      //  CHANGED: Save PDF URL to invoice
       await invoice.update({
         pdfUrl: `/uploads/invoices/${invoice.invoiceNumber}.pdf`,
       });
@@ -217,11 +225,23 @@ const handleConfirmation = async (from) => {
       });
     }
 
-    //  CHANGED: Send single message with invoice details + both links
-    await sendWhatsAppMessage(
-      from,
-      `Invoice Created!\nInvoice #: ${invoice?.invoiceNumber}\nTotal: ₦${invoice?.totalAmount.toLocaleString()}\n\n${PDF_AND_PORTAL_MSG(invoice.id, invoice.invoiceNumber, config.APP_URL, config.PORTAL_URL)}`,
-    );
+    // ✅ CHANGED: Wrap WhatsApp message with timeout
+    try {
+      await withTimeout(
+        sendWhatsAppMessage(
+          from,
+          `Invoice Created!\nInvoice #: ${invoice?.invoiceNumber}\nTotal: ₦${invoice?.totalAmount.toLocaleString()}\n\n${PDF_AND_PORTAL_MSG(invoice.id, invoice.invoiceNumber, config.APP_URL, config.PORTAL_URL)}`,
+        ),
+        TWILIO_TIMEOUT,
+        'WhatsApp message send',
+      );
+    } catch (whatsappError) {
+      logger.error('WhatsApp message timeout', {
+        userId: user.id,
+        invoiceId: invoice.id,
+        error: whatsappError.message,
+      });
+    }
   } catch (error) {
     logger.error('Error in handleConfirmation', {
       error: error.message,

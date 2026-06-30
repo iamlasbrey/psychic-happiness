@@ -139,6 +139,20 @@ const downloadPdf = async (req, res, next) => {
   }
 };
 
+const stats = async (req, res, next) => {
+  try {
+    const result = await invoiceService.getInvoiceStats(req.user.id);
+
+    res.json({
+      success: true,
+      message: 'User invoice stats fetched',
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   create,
   list,
@@ -148,4 +162,5 @@ module.exports = {
   delete: deleteInvoice,
   submitToFirs,
   recordPayment,
+  stats,
 };

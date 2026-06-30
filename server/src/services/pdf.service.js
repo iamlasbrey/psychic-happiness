@@ -4,6 +4,8 @@ const QRCode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
 const { Invoice, InvoiceLineItem } = require('../models');
+const logger = require('../config/logger');
+const PDF_STREAM_TIMEOUT = 60000; //
 
 const generateInvoicePdf = async (userId, invoiceId) => {
   try {
@@ -112,13 +114,40 @@ const generateInvoicePdf = async (userId, invoiceId) => {
 
     doc.end();
 
+    // ✅ CHANGED: Add timeout to stream operations
     return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        stream.destroy();
+        const error = new Error(
+          'PDF generation stream timeout after ' + PDF_STREAM_TIMEOUT + 'ms',
+        );
+        error.statusCode = 504;
+        error.isTimeout = true;
+        logger.error('PDF stream timeout', { invoiceId, userId });
+        reject(error);
+      }, PDF_STREAM_TIMEOUT);
+
       stream.on('finish', () => {
+        clearTimeout(timeoutId);
         resolve(pdfPath);
       });
-      stream.on('error', reject);
+
+      stream.on('error', (err) => {
+        clearTimeout(timeoutId);
+        logger.error('PDF stream error', {
+          invoiceId,
+          userId,
+          error: err.message,
+        });
+        reject(err);
+      });
     });
   } catch (error) {
+    logger.error('PDF generation error', {
+      userId,
+      invoiceId,
+      error: error.message,
+    });
     throw error;
   }
 };
