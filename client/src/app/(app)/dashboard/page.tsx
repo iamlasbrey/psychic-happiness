@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react'; // ✅ CHANGED: Added signOut
 import { 
   Plus, 
   Search, 
@@ -15,7 +15,8 @@ import {
   Loader,
   MoreHorizontal,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  LucideIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -40,6 +41,25 @@ interface InvoicesResponse {
   };
 }
 
+interface StatsResponse {
+  success: boolean;
+  data: {
+    totalInvoices: number;
+    pendingAmount: number;
+    paidThisMonth: number;
+    growthPercentage: number;
+  };
+}
+
+interface Stat {
+  label: string;
+  value: string;
+  change: string;
+  icon: LucideIcon;
+  iconColor: string;
+  bgColor: string;
+}
+
 interface Pagination {
   total: number;
   pages: number;
@@ -52,15 +72,66 @@ const statusBadge = {
   overdue: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', dot: 'bg-red-500', label: 'Overdue' },
 };
 
-const stats = [
-  { label: 'Total Invoices', value: '24', change: '+8%', icon: FileText, iconColor: 'text-primary-600', bgColor: 'bg-primary-50' },
-  { label: 'Pending', value: '₦189.5K', change: '+12%', icon: Clock, iconColor: 'text-secondary-600', bgColor: 'bg-secondary-50' },
-  { label: 'Paid This Month', value: '₦412.3K', change: '+23%', icon: CheckCircle, iconColor: 'text-primary-600', bgColor: 'bg-primary-50' },
-  { label: 'Growth', value: '+12.4%', change: '+2.1%', icon: TrendingUp, iconColor: 'text-primary-600', bgColor: 'bg-primary-50' },
+const defaultStats: Stat[] = [
+  { label: 'Total Invoices', value: '0', change: '0%', icon: FileText, iconColor: 'text-primary-600', bgColor: 'bg-primary-50' },
+  { label: 'Pending', value: '₦0', change: '0%', icon: Clock, iconColor: 'text-secondary-600', bgColor: 'bg-secondary-50' },
+  { label: 'Paid This Month', value: '₦0', change: '0%', icon: CheckCircle, iconColor: 'text-primary-600', bgColor: 'bg-primary-50' },
+  { label: 'Growth', value: '+0%', change: '0%', icon: TrendingUp, iconColor: 'text-primary-600', bgColor: 'bg-primary-50' },
 ];
+
+const formatCurrency = (value: number): string => {
+  if (value >= 1000000) {
+    return `₦${(value / 1000000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `₦${(value / 1000).toFixed(1)}K`;
+  }
+  return `₦${value}`;
+};
+
+const mapApiStatsToStats = (apiData: StatsResponse['data']): Stat[] => {
+  return [
+    { 
+      label: 'Total Invoices', 
+      value: apiData.totalInvoices.toString(), 
+      change: '+0%', 
+      icon: FileText, 
+      iconColor: 'text-primary-600', 
+      bgColor: 'bg-primary-50' 
+    },
+    { 
+      label: 'Pending', 
+      value: formatCurrency(apiData.pendingAmount), 
+      change: '+0%', 
+      icon: Clock, 
+      iconColor: 'text-secondary-600', 
+      bgColor: 'bg-secondary-50' 
+    },
+    { 
+      label: 'Paid This Month', 
+      value: formatCurrency(apiData.paidThisMonth), 
+      change: '+0%', 
+      icon: CheckCircle, 
+      iconColor: 'text-primary-600', 
+      bgColor: 'bg-primary-50' 
+    },
+    { 
+      label: 'Growth', 
+      value: `${apiData.growthPercentage > 0 ? '+' : ''}${apiData.growthPercentage.toFixed(1)}%`, 
+      change: '+0%', 
+      icon: TrendingUp, 
+      iconColor: 'text-primary-600', 
+      bgColor: 'bg-primary-50' 
+    },
+  ];
+};
 
 export default function Dashboard() {
   const { data: session } = useSession();
+  const accessToken = (session as { accessToken?: string })?.accessToken;
+  
+  const [stats, setStats] = useState<Stat[]>(defaultStats);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -75,11 +146,54 @@ export default function Dashboard() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // ✅ CHANGED: Add 401 handling to fetchStats
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!accessToken) {
+        setStatsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/invoices/stats`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }
+        );
+
+        // ✅ NEW: Handle 401 token expiration
+        if (response.status === 401) {
+          toast.error('Session expired. Please login again.');
+          await signOut({ callbackUrl: '/login' });
+          return;
+        }
+
+        if (!response.ok) {
+          toast.error('Failed to fetch stats');
+          setStatsLoading(false);
+          return;
+        }
+
+        const data: StatsResponse = await response.json();
+        setStats(mapApiStatsToStats(data.data));
+      } catch (error) {
+        toast.error('Error loading statistics');
+        console.error('Stats fetch error:', error);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [accessToken]);
+
+  // ✅ CHANGED: Add 401 handling to fetchInvoices
   useEffect(() => {
     const controller = new AbortController();
 
     const fetchInvoices = async () => {
-      if (!session?.accessToken) {
+      if (!accessToken) {
         setLoading(false);
         return;
       }
@@ -90,10 +204,9 @@ export default function Dashboard() {
           limit: limit.toString(),
         });
 
-        if (debouncedSearch) params.append('search', debouncedSearch);
+        if (debouncedSearch) params.append('q', debouncedSearch);
         if (status) params.append('paymentStatus', status);
 
-        const accessToken = (session as { accessToken?: string })?.accessToken ?? '';
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/invoices?${params}`,
           {
@@ -101,6 +214,15 @@ export default function Dashboard() {
             signal: controller.signal,
           }
         );
+
+        // ✅ NEW: Handle 401 token expiration
+        if (response.status === 401) {
+          if (!controller.signal.aborted) {
+            toast.error('Session expired. Please login again.');
+            await signOut({ callbackUrl: '/login' });
+          }
+          return;
+        }
 
         if (!response.ok) {
           if (!controller.signal.aborted) toast.error('Failed to fetch invoices');
@@ -126,7 +248,7 @@ export default function Dashboard() {
 
     fetchInvoices();
     return () => controller.abort();
-  }, [page, debouncedSearch, status, session?.accessToken, limit]);
+  }, [page, debouncedSearch, status, accessToken, limit]);
 
   const handlePrevPage = useCallback(() => { 
     if (page > 1) setPage(page - 1); 
@@ -148,26 +270,36 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => {
-          const Icon = stat.icon;
-          return (
-            <div key={i} className="bg-white border border-neutral-200 rounded-xl p-5 hover:shadow-md transition-all duration-200 group">
-              <div className="flex items-start justify-between">
-                <div className={`w-10 h-10 rounded-lg ${stat.bgColor} flex items-center justify-center`}>
-                  <Icon className={`w-5 h-5 ${stat.iconColor}`} />
-                </div>
-                <div className="flex items-center gap-1 text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
-                  <ArrowUpRight className="w-3 h-3" />
-                  <span className="text-xs font-semibold">{stat.change}</span>
-                </div>
-              </div>
-              <div className="mt-4">
-                <p className="text-2xl font-bold text-neutral-900 tracking-tight">{stat.value}</p>
-                <p className="text-sm text-neutral-500 mt-0.5">{stat.label}</p>
-              </div>
+        {statsLoading ? (
+          Array(4).fill(0).map((_, i) => (
+            <div key={i} className="bg-white border border-neutral-200 rounded-xl p-5 animate-pulse">
+              <div className="w-10 h-10 rounded-lg bg-neutral-200 mb-4" />
+              <div className="h-8 bg-neutral-200 rounded mb-2" />
+              <div className="h-4 bg-neutral-100 rounded w-20" />
             </div>
-          );
-        })}
+          ))
+        ) : (
+          stats.map((stat, i) => {
+            const Icon = stat.icon;
+            return (
+              <div key={i} className="bg-white border border-neutral-200 rounded-xl p-5 hover:shadow-md transition-all duration-200 group">
+                <div className="flex items-start justify-between">
+                  <div className={`w-10 h-10 rounded-lg ${stat.bgColor} flex items-center justify-center`}>
+                    <Icon className={`w-5 h-5 ${stat.iconColor}`} />
+                  </div>
+                  <div className="flex items-center gap-1 text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
+                    <ArrowUpRight className="w-3 h-3" />
+                    <span className="text-xs font-semibold">{stat.change}</span>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <p className="text-2xl font-bold text-neutral-900 tracking-tight">{stat.value}</p>
+                  <p className="text-sm text-neutral-500 mt-0.5">{stat.label}</p>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* Actions Bar */}
@@ -206,8 +338,7 @@ export default function Dashboard() {
           >
             <option value="">All Status</option>
             <option value="paid">Paid</option>
-            <option value="pending">Pending</option>
-            <option value="overdue">Overdue</option>
+            <option value="unpaid">Unpaid</option>
           </select>
         </div>
 

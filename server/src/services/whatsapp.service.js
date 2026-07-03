@@ -10,7 +10,7 @@ const logger = require('../config/logger');
 const { sanitizeWhatsAppMessage } = require('../utils/sanitizer');
 const { Op } = require('sequelize');
 const pdfService = require('./pdf.service');
-const { withTimeout } = require('../utils/timeout.util'); // ✅ NEW: Timeout utility
+const { withTimeout } = require('../utils/timeoutUtil');
 
 const QUOTA_EXCEEDED_MSG = (limit) =>
   `Daily invoice limit (${limit}) reached. Please try again tomorrow.`;

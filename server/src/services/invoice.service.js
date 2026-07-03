@@ -3,9 +3,8 @@ const { Op } = require('sequelize');
 const { generateInvoiceNumber } = require('./../utils/generateInvoice');
 const logger = require('../config/logger');
 const Sequelize = require('sequelize');
-const { withTimeout } = require('../utils/timeout.util'); // ✅ NEW: Timeout utility
+const { withTimeout } = require('../utils/timeoutUtil');
 
-// ✅ NEW: Database query timeout (30 seconds)
 const DB_QUERY_TIMEOUT = 30000;
 
 const createInvoice = async (userId, invoiceData) => {
