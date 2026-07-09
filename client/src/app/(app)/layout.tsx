@@ -1,8 +1,16 @@
 // src/app/(app)/layout.tsx
 import type { ReactNode } from 'react';
+import { getServerSession } from 'next-auth/next';
+import { redirect } from 'next/navigation';
 import TopSidebar from '@/components/layout/TopSidebar';
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+export default async function AppLayout({ children }: { children: ReactNode }) {
+  const session = await getServerSession();
+
+  if (!session) {
+    redirect('/login');
+  }
+
   return (
     <div className="min-h-screen bg-neutral-50">
       <TopSidebar />

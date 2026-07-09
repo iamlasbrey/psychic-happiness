@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Poppins, Playfair_Display, Open_Sans } from "next/font/google";
-import { getServerSession } from "next-auth/next";
 import { Toaster } from "sonner";
 import { Providers } from "@/providers";
 import "./globals.css";
@@ -30,20 +29,18 @@ export const metadata: Metadata = {
   description: "Send FIRS-compliant invoices on WhatsApp. Get paid faster.",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getServerSession();
-
   return (
     <html
       lang="en"
       className={`${poppins.variable} ${openSans.variable} ${playfair.variable}`}
     >
       <body className="font-sans antialiased">
-        <Providers session={session}>
+        <Providers>
           {children}
           <Toaster position="top-right" />
         </Providers>
