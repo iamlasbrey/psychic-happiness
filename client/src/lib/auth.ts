@@ -1,40 +1,6 @@
 import type { NextAuthOptions } from 'next-auth';
-import type { JWT } from 'next-auth/jwt';
-import type { Session } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { normalizePhoneNumber } from '@/utils/phone';
-
-interface CustomUser {
-  id: string;
-  phoneNumber: string;
-  businessName: string;
-  accessToken: string;
-  refreshToken: string;
-}
-
-interface LoginResponse {
-  data: CustomUser;
-  message?: string;
-}
-
-type CustomJWT = Omit<JWT, 'accessToken'> & {
-  accessToken?: string;
-  refreshToken?: string;
-  id: string;
-  phoneNumber: string;
-  businessName: string;
-  accessTokenExpires?: number;
-};
-
-type CustomSession = Omit<Session, 'accessToken' | 'refreshToken'> & {
-  user: Session['user'] & {
-    id: string;
-    phoneNumber: string;
-    businessName: string;
-  };
-  accessToken?: string;
-  refreshToken?: string;
-};
 
 if (!process.env.NEXT_PUBLIC_API_URL) {
   throw new Error('NEXT_PUBLIC_API_URL is not configured');
@@ -75,16 +41,6 @@ export const authOptions: NextAuthOptions = {
           );
           clearTimeout(timeoutId);
 
-          const responseText = await response.text();
-          let result: LoginResponse;
-          try {
-            result = JSON.parse(responseText) as LoginResponse;
-          } catch {
-            throw new Error(
-              'Server returned an invalid response. Check your API URL.',
-            );
-          }
-
           if (!response.ok) {
             const errorMap: Record<number, string> = {
               400: 'Invalid request format',
@@ -93,6 +49,8 @@ export const authOptions: NextAuthOptions = {
               429: 'Too many attempts. Please try again later',
               500: 'Server error. Please try again',
             };
+
+            const result = await response.json().catch(() => ({}));
             throw new Error(
               errorMap[response.status] ||
                 result.message ||
@@ -100,19 +58,20 @@ export const authOptions: NextAuthOptions = {
             );
           }
 
+          const result = await response.json();
+
           return {
             id: result.data.id,
             phoneNumber: result.data.phoneNumber,
             businessName: result.data.businessName,
             accessToken: result.data.accessToken,
             refreshToken: result.data.refreshToken,
-          } as CustomUser;
+          };
         } catch (error) {
           if (error instanceof Error && error.name === 'AbortError') {
             throw new Error('Request timed out. Please check your connection.');
           }
-          if (error instanceof Error) throw error;
-          throw new Error('Authentication failed');
+          throw error;
         }
       },
     }),
@@ -123,69 +82,69 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60,
-  },
-  jwt: {
-    secret: process.env.NEXTAUTH_SECRET,
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        const u = user as CustomUser;
-        (token as CustomJWT).id = u.id;
-        (token as CustomJWT).phoneNumber = u.phoneNumber;
-        (token as CustomJWT).businessName = u.businessName;
-        (token as CustomJWT).accessToken = u.accessToken;
-        (token as CustomJWT).refreshToken = u.refreshToken;
-        (token as CustomJWT).accessTokenExpires =
-          Date.now() + 24 * 60 * 60 * 1000;
+        token.id = user.id;
+        token.phoneNumber = user.phoneNumber;
+        token.businessName = user.businessName;
+        token.accessToken = user.accessToken;
+        token.refreshToken = user.refreshToken;
+        token.accessTokenExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
       }
 
-      const t = token as CustomJWT;
-      const now = Date.now();
-      const expires = t.accessTokenExpires ?? 0;
+      // Skip refresh if token is still valid (5+ minutes remaining)
+      const expires = token.accessTokenExpires ?? 0;
+      if (Date.now() < expires - 5 * 60 * 1000) {
+        return token;
+      }
 
-      if (now < expires - 60_000) return token;
-
-      if (t.refreshToken) {
+      // Attempt token refresh
+      if (token.refreshToken) {
         try {
           const res = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ refreshToken: t.refreshToken }),
+              body: JSON.stringify({ refreshToken: token.refreshToken }),
+              signal: AbortSignal.timeout(5000),
             },
           );
+
           if (res.ok) {
             const data = await res.json();
-            t.accessToken = data.accessToken;
-            t.refreshToken = data.refreshToken ?? t.refreshToken;
-            t.accessTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
+            token.accessToken = data.accessToken;
+            token.refreshToken = data.refreshToken ?? token.refreshToken;
+            token.accessTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
+          } else {
+            // Refresh failed - clear tokens
+            token.accessToken = undefined;
+            token.refreshToken = undefined;
           }
-        } catch {}
-      }
-
-      if (!t.accessToken) {
-        t.accessToken = undefined;
-        t.refreshToken = undefined;
+        } catch (error) {
+          console.warn('Token refresh failed:', error);
+          token.accessToken = undefined;
+          token.refreshToken = undefined;
+        }
       }
 
       return token;
     },
+
     async session({ session, token }) {
-      const s = session as CustomSession;
-      const t = token as CustomJWT;
+      session.accessToken = token.accessToken;
+      session.refreshToken = token.refreshToken;
 
-      if (s.user) {
-        s.user.id = t.id;
-        s.user.phoneNumber = t.phoneNumber;
-        s.user.businessName = t.businessName;
+      if (session.user) {
+        session.user.id = token.id;
+        session.user.phoneNumber = token.phoneNumber;
+        session.user.businessName = token.businessName;
       }
-      s.accessToken = t.accessToken;
-      s.refreshToken = t.refreshToken;
 
-      return s as Session;
+      return session;
     },
   },
 };

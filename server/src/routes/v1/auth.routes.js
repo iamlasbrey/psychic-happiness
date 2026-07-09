@@ -1,5 +1,9 @@
 const { Router } = require('express');
-const { createUser, loginUser } = require('../../controllers/user.controller');
+const {
+  createUser,
+  loginUser,
+  refreshToken,
+} = require('../../controllers/user.controller');
 const validateRequest = require('../../middleware/validateRequest'); // 1. Import middleware
 const {
   userCreateSchema,
@@ -12,5 +16,6 @@ const router = Router();
 // validation middleware runs before the controller
 router.post('/register', validateRequest(userCreateSchema), createUser);
 router.post('/login', validateRequest(userLoginSchema), loginUser);
+router.post('/refresh', validateRequest(refreshTokenSchema), refreshToken);
 
 module.exports = router;

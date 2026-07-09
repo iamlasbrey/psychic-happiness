@@ -35,9 +35,9 @@ import { toast } from 'sonner';
 interface ApiLineItem {
   id: string;
   description: string;
-  quantity: string; // API returns string like "1.00"
-  unitPrice: string; // API returns string like "6500.00"
-  amount: string; // API returns string like "6500.00"
+  quantity: string;
+  unitPrice: string;
+  amount: string;
 }
 
 interface ApiCustomer {
@@ -65,7 +65,7 @@ interface ApiInvoice {
   pdfUrl?: string | null;
   description?: string | null;
   notes?: string | null;
-  lineItems: ApiLineItem[]; // ✅ API uses `lineItems`, not `items`
+  lineItems: ApiLineItem[];
   createdAt: string;
   updatedAt: string;
 }
@@ -88,7 +88,7 @@ interface Invoice {
   id: string;
   invoiceNumber: string;
   customerName: string;
-  customerEmail: string; // Mapped from customer.name/businessName
+  customerEmail: string;
   customerPhone?: string;
   customerAddress?: string;
   businessName: string;
@@ -99,12 +99,12 @@ interface Invoice {
   dueDate: string;
   paymentStatus: 'paid' | 'unpaid' | 'pending' | 'overdue';
   status: string;
-  subtotal: number; // ✅ Parsed number for UI
+  subtotal: number;
   taxRate: number;
   taxAmount: number;
   totalAmount: number;
   notes?: string;
-  items: InvoiceItem[]; // ✅ Mapped from lineItems
+  items: InvoiceItem[];
   createdAt: string;
   updatedAt: string;
 }
@@ -120,35 +120,34 @@ const parseAmount = (value: string | number | null | undefined): number => {
 const mapApiInvoiceToUI = (api: ApiInvoice, sessionBusinessName?: string): Invoice => {
   const vatRate = api.vatAmount && api.subTotal 
     ? (parseAmount(api.vatAmount) / parseAmount(api.subTotal)) * 100 
-    : 7.5; // Default Nigerian VAT rate
+    : 7.5;
 
   return {
     id: api.id,
     invoiceNumber: api.invoiceNumber,
     customerName: api.customerName,
-    customerEmail: api.customer.businessName || api.customer.name, // Fallback since API has no email field
+    customerEmail: api.customer.businessName || api.customer.name,
     customerPhone: api.customer.customerPhone,
     customerAddress: api.customer.address || undefined,
     businessName: sessionBusinessName || 'Your Business',
-    businessEmail: '', // Add from session if available
-    businessPhone: '', // Add from session if available
-    businessAddress: '', // Add from session if available
+    businessEmail: '',
+    businessPhone: '',
+    businessAddress: '',
     issueDate: api.issueDate,
     dueDate: api.dueDate,
     paymentStatus: api.paymentStatus,
-    status: api.paymentStatus, // Alias for compatibility
+    status: api.paymentStatus,
     subtotal: parseAmount(api.subTotal),
     taxRate: vatRate,
     taxAmount: parseAmount(api.vatAmount),
     totalAmount: parseAmount(api.totalAmount),
     notes: api.notes || undefined,
-    // ✅ Map lineItems → items with parsed numbers
     items: api.lineItems.map(item => ({
       id: item.id,
       description: item.description,
       quantity: parseAmount(item.quantity),
       unitPrice: parseAmount(item.unitPrice),
-      total: parseAmount(item.amount), // ✅ Map `amount` → `total`
+      total: parseAmount(item.amount),
     })),
     createdAt: api.createdAt,
     updatedAt: api.updatedAt,
@@ -264,7 +263,7 @@ export default function InvoicePage() {
 
         const data: InvoiceResponse = await response.json();
         if (data.success) {
-          setInvoice(mapApiInvoiceToUI(data.data, sessionBusinessName)); // ✅ Use mapper
+          setInvoice(mapApiInvoiceToUI(data.data, sessionBusinessName));
         }
       } catch (error) {
         toast.error('Error loading invoice');
@@ -354,6 +353,22 @@ export default function InvoicePage() {
     }
   };
 
+  // ✅ NEW: MVP WhatsApp share function
+  const handleShareWhatsApp = () => {
+    if (!invoice) return;
+    
+    const message = `*Invoice ${invoice.invoiceNumber}*\n` +
+      `Customer: ${invoice.customerName}\n` +
+      `Amount: ${formatCurrency(invoice.totalAmount)}\n` +
+      `Due: ${formatDate(invoice.dueDate)}\n` +
+      `Status: ${statusConfig[invoice.paymentStatus]?.label}\n\n` +
+      `View details: ${typeof window !== 'undefined' ? window.location.origin : ''}/invoices/${invoice.id}`;
+    
+    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+    toast.success('Opening WhatsApp...');
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -415,14 +430,14 @@ export default function InvoicePage() {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handlePrint}
-            className="inline-flex items-center gap-2 font-medium text-sm text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50 px-4 py-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-[44px]"
+            className="inline-flex items-center gap-2 font-medium text-sm text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50 px-4 py-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-11"
           >
             <Printer className="w-4 h-4" />
             <span className="hidden sm:inline">Print</span>
           </button>
           <button
             onClick={handleDownload}
-            className="inline-flex items-center gap-2 font-medium text-sm text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50 px-4 py-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-[44px]"
+            className="inline-flex items-center gap-2 font-medium text-sm text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50 px-4 py-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-11"
           >
             <Download className="w-4 h-4" />
             <span className="hidden sm:inline">Download</span>
@@ -431,7 +446,7 @@ export default function InvoicePage() {
             <button
               onClick={handleSendInvoice}
               disabled={sending}
-              className="inline-flex items-center gap-2 font-medium text-sm text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50 px-4 py-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 disabled:opacity-50 min-h-[44px]"
+              className="inline-flex items-center gap-2 font-medium text-sm text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50 px-4 py-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 disabled:opacity-50 min-h-11"
             >
               {sending ? (
                 <Loader className="w-4 h-4 animate-spin" />
@@ -441,16 +456,27 @@ export default function InvoicePage() {
               <span className="hidden sm:inline">Send</span>
             </button>
           )}
+          
+          {/* ✅ NEW: WhatsApp Share Button (MVP) */}
+          <button
+            onClick={handleShareWhatsApp}
+            className="inline-flex items-center gap-2 font-medium text-sm text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50 px-4 py-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-11"
+            title="Share via WhatsApp"
+          >
+            <Send className="w-4 h-4 text-green-600" />
+            <span className="hidden sm:inline">WhatsApp</span>
+          </button>
+          
           <Link
             href={`/invoices/${invoiceId}/edit`}
-            className="inline-flex items-center gap-2 font-medium text-sm text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50 px-4 py-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-[44px]"
+            className="inline-flex items-center gap-2 font-medium text-sm text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50 px-4 py-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-11"
           >
             <Pencil className="w-4 h-4" />
             <span className="hidden sm:inline">Edit</span>
           </Link>
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-2 font-medium text-sm text-red-600 bg-white border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-red-400 min-h-[44px]"
+            className="inline-flex items-center gap-2 font-medium text-sm text-red-600 bg-white border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-red-400 min-h-11"
           >
             <Trash2 className="w-4 h-4" />
             <span className="hidden sm:inline">Delete</span>
@@ -471,7 +497,7 @@ export default function InvoicePage() {
                   <h1 className="text-xl font-bold text-neutral-900">{invoice.invoiceNumber}</h1>
                   <button
                     onClick={handleCopyInvoiceNumber}
-                    className="p-1 rounded-md hover:bg-neutral-100 transition-colors text-neutral-400 hover:text-neutral-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    className="p-1 rounded-md hover:bg-neutral-100 transition-colors text-neutral-400 hover:text-neutral-600 min-h-11 min-w-11 flex items-center justify-center"
                     title="Copy invoice number"
                   >
                     {copied ? (
@@ -688,7 +714,7 @@ export default function InvoicePage() {
             {!isPaid && (
               <button
                 onClick={() => toast.info('Mark as paid feature coming soon')}
-                className="w-full mt-4 inline-flex items-center justify-center gap-2 font-semibold text-sm bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white px-5 py-2.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 min-h-[44px]"
+                className="w-full mt-4 inline-flex items-center justify-center gap-2 font-semibold text-sm bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white px-5 py-2.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 min-h-11"
               >
                 <CheckCircle className="w-4 h-4" />
                 Mark as Paid
@@ -755,14 +781,14 @@ export default function InvoicePage() {
             <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="inline-flex items-center font-medium text-sm text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50 px-4 py-2 rounded-lg transition-all min-h-[44px]"
+                className="inline-flex items-center font-medium text-sm text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50 px-4 py-2 rounded-lg transition-all min-h-11"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="inline-flex items-center gap-2 font-medium text-sm text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition-all disabled:opacity-50 min-h-[44px]"
+                className="inline-flex items-center gap-2 font-medium text-sm text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition-all disabled:opacity-50 min-h-11"
               >
                 {deleting && <Loader className="w-4 h-4 animate-spin" />}
                 Delete Invoice

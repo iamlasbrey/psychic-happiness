@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const { normalizePhoneNumber } = require('../utils/phoneNormalize');
+const logger = require('../utils/logger');
 
 const JWT_SECRET = config.JWT_SECRET;
 const JWT_REFRESH_SECRET = config.JWT_REFRESH_SECRET;
@@ -92,6 +93,14 @@ const loginUser = async (phoneNumber, password) => {
     where: { phoneNumber: normalizedPhone },
   });
 
+  const profile = {
+    id: user.id,
+    phoneNumber: user.phoneNumber,
+    businessName: user.businessName,
+    businessRegistrationNumber: user.businessRegistrationNumber,
+    tin: user.tin,
+  };
+
   if (!user) {
     const error = new Error('Invalid phone or password');
     error.statusCode = 401;
@@ -134,21 +143,49 @@ const generateTokens = (userId) => {
   };
 };
 
-/**
- * Refresh access token
- */
 const refreshAccessToken = async (refreshToken) => {
   try {
-    const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
-    const accessToken = jwt.sign({ id: decoded.id }, JWT_SECRET, {
+    // Verify refresh token
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, config.JWT_REFRESH_SECRET);
+    } catch (error) {
+      const err = new Error('Invalid or expired refresh token');
+      err.statusCode = 401;
+      throw err;
+    }
+
+    // Verify user still exists
+    const user = await User.findByPk(decoded.id);
+    if (!user) {
+      const err = new Error('User not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    // Generate new access token
+    const accessToken = jwt.sign({ id: decoded.id }, config.JWT_SECRET, {
       expiresIn: '24h',
     });
 
-    return { accessToken };
+    // Generate new refresh token
+    const newRefreshToken = jwt.sign(
+      { id: decoded.id },
+      config.JWT_REFRESH_SECRET,
+      {
+        expiresIn: '7d',
+      },
+    );
+
+    logger.info('Token refreshed', { userId: decoded.id });
+
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+    };
   } catch (error) {
-    const err = new Error('Invalid refresh token');
-    err.statusCode = 401;
-    throw err;
+    logger.error('Token refresh error', { error: error.message });
+    throw error;
   }
 };
 

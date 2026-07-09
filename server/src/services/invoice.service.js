@@ -3,8 +3,7 @@ const { Op } = require('sequelize');
 const { generateInvoiceNumber } = require('./../utils/generateInvoice');
 const logger = require('../config/logger');
 const Sequelize = require('sequelize');
-const { withTimeout } = require('../utils/timeoutUtil');
-
+const { withTimeout, isTimeoutError } = require('../utils/timeoutUtil');
 const DB_QUERY_TIMEOUT = 30000;
 
 const createInvoice = async (userId, invoiceData) => {
@@ -189,12 +188,37 @@ const listInvoices = async (userId, options = {}) => {
 
     const where = { userId };
 
+    // ✅ Optimized search logic for MySQL
     if (q && q.trim()) {
-      where[Op.or] = [
-        { invoiceNumber: { [Op.like]: `%${q}%` } },
-        { customerName: { [Op.like]: `%${q}%` } },
-        { customerPhone: { [Op.like]: `%${q}%` } },
-      ];
+      const searchTerm = q.trim();
+
+      // Fast path 1: Exact invoice number match (uses index)
+      if (/^INV-/.test(searchTerm)) {
+        const exact = await Invoice.findOne({
+          where: { userId, invoiceNumber: searchTerm },
+          attributes: ['id'],
+        });
+        if (exact) {
+          where.id = exact.id; // Bypass LIKE entirely
+        }
+      }
+
+      // Fast path 2: Numeric search → likely phone or amount
+      if (/^\d+$/.test(searchTerm)) {
+        where[Op.or] = [
+          { customerPhone: searchTerm }, // Exact match, uses index if available
+          { totalAmount: searchTerm }, // If searching by amount
+        ];
+      }
+
+      // Fallback: LIKE search (still slow, but filtered by userId)
+      if (!where.id && !where[Op.or]) {
+        where[Op.or] = [
+          { invoiceNumber: { [Op.like]: `%${searchTerm}%` } },
+          { customerName: { [Op.like]: `%${searchTerm}%` } },
+          // Skip customerPhone LIKE if rarely searched
+        ];
+      }
     }
 
     if (status) {
@@ -540,84 +564,127 @@ const getInvoiceStats = async (userId) => {
   try {
     logger.debug('Fetching invoice stats', { userId });
 
-    // ✅ CHANGED: Wrap with timeout
-    const totalInvoices = await withTimeout(
-      Invoice.count({
-        where: { userId },
-      }),
-      DB_QUERY_TIMEOUT,
-      'Count total invoices',
-    );
-
-    // ✅ CHANGED: Wrap with timeout
-    const pendingResult = await withTimeout(
-      Invoice.findAll({
-        where: { userId, paymentStatus: 'unpaid' },
-        attributes: [
-          [Sequelize.fn('SUM', Sequelize.col('totalAmount')), 'total'],
-        ],
-        raw: true,
-      }),
-      DB_QUERY_TIMEOUT,
-      'Sum pending amount',
-    );
-    const pendingAmount = Number(pendingResult[0]?.total) || 0;
-
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    // ✅ Use UTC consistently to avoid timezone drift
+    const startOfMonth = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+    );
+    const endOfMonth = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999),
+    );
+    const startOfLastMonth = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1),
+    );
+    const endOfLastMonth = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999),
+    );
 
-    // ✅ CHANGED: Wrap with timeout
-    const paidThisMonthResult = await withTimeout(
-      Invoice.findAll({
-        where: {
-          userId,
-          paymentStatus: 'paid',
-          paidAt: {
-            [Op.between]: [startOfMonth, endOfMonth],
-          },
-        },
+    // ✅ Use Sequelize.where + Sequelize.fn for safe parameterized queries
+    const result = await withTimeout(
+      Invoice.findOne({
+        where: { userId },
         attributes: [
-          [Sequelize.fn('SUM', Sequelize.col('totalAmount')), 'total'],
+          // Total invoices
+          [Sequelize.fn('COUNT', Sequelize.col('id')), 'totalInvoices'],
+
+          // Pending amount: SUM where paymentStatus = 'unpaid'
+          [
+            Sequelize.fn(
+              'SUM',
+              Sequelize.fn(
+                'IF',
+                Sequelize.where(Sequelize.col('paymentStatus'), 'unpaid'),
+                Sequelize.col('totalAmount'),
+                0,
+              ),
+            ),
+            'pendingAmount',
+          ],
+
+          // Paid this month: SUM where paid AND paidAt in range
+          [
+            Sequelize.fn(
+              'SUM',
+              Sequelize.fn(
+                'IF',
+                Sequelize.and(
+                  Sequelize.where(Sequelize.col('paymentStatus'), 'paid'),
+                  Sequelize.where(Sequelize.col('paidAt'), '>=', startOfMonth),
+                  Sequelize.where(Sequelize.col('paidAt'), '<=', endOfMonth),
+                ),
+                Sequelize.col('totalAmount'),
+                0,
+              ),
+            ),
+            'paidThisMonth',
+          ],
+
+          // Count this month: COUNT where createdAt in range
+          [
+            Sequelize.fn(
+              'COUNT',
+              Sequelize.fn(
+                'IF',
+                Sequelize.and(
+                  Sequelize.where(
+                    Sequelize.col('createdAt'),
+                    '>=',
+                    startOfMonth,
+                  ),
+                  Sequelize.where(Sequelize.col('createdAt'), '<=', endOfMonth),
+                ),
+                1,
+                null,
+              ),
+            ),
+            'thisMonthCount',
+          ],
+
+          // Count last month: COUNT where createdAt in range
+          [
+            Sequelize.fn(
+              'COUNT',
+              Sequelize.fn(
+                'IF',
+                Sequelize.and(
+                  Sequelize.where(
+                    Sequelize.col('createdAt'),
+                    '>=',
+                    startOfLastMonth,
+                  ),
+                  Sequelize.where(
+                    Sequelize.col('createdAt'),
+                    '<=',
+                    endOfLastMonth,
+                  ),
+                ),
+                1,
+                null,
+              ),
+            ),
+            'lastMonthCount',
+          ],
         ],
         raw: true,
       }),
-      DB_QUERY_TIMEOUT,
-      'Sum paid this month',
-    );
-    const paidThisMonth = Number(paidThisMonthResult[0]?.total) || 0;
-
-    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-
-    // ✅ CHANGED: Wrap with timeout
-    const thisMonthCount = await withTimeout(
-      Invoice.count({
-        where: {
-          userId,
-          createdAt: {
-            [Op.between]: [startOfMonth, endOfMonth],
-          },
-        },
-      }),
-      DB_QUERY_TIMEOUT,
-      'Count this month invoices',
+      DB_QUERY_TIMEOUT, // ✅ Use tiered timeout
+      'Invoice stats aggregation',
     );
 
-    // ✅ CHANGED: Wrap with timeout
-    const lastMonthCount = await withTimeout(
-      Invoice.count({
-        where: {
-          userId,
-          createdAt: {
-            [Op.between]: [startOfLastMonth, endOfLastMonth],
-          },
-        },
-      }),
-      DB_QUERY_TIMEOUT,
-      'Count last month invoices',
-    );
+    const data = result || {};
 
+    // ✅ Defensive coercion + rounding
+    const totalInvoices = Number(data.totalInvoices) || 0;
+    const pendingAmount = parseFloat(
+      (Number(data.pendingAmount) || 0).toFixed(2),
+    );
+    const paidThisMonth = parseFloat(
+      (Number(data.paidThisMonth) || 0).toFixed(2),
+    );
+    const thisMonthCount = Number(data.thisMonthCount) || 0;
+    const lastMonthCount = Number(data.lastMonthCount) || 0;
+
+    // ✅ Safe growth calculation
     const growthPercentage =
       lastMonthCount === 0
         ? thisMonthCount > 0
@@ -640,15 +707,25 @@ const getInvoiceStats = async (userId) => {
 
     return {
       totalInvoices,
-      pendingAmount: parseFloat(pendingAmount.toFixed(2)),
-      paidThisMonth: parseFloat(paidThisMonth.toFixed(2)),
+      pendingAmount,
+      paidThisMonth,
       growthPercentage,
     };
   } catch (error) {
-    logger.error('Error fetching invoice stats:', {
-      userId,
-      error: error.message,
-    });
+    // ✅ Distinguish timeout vs genuine error
+    if (isTimeoutError(error)) {
+      logger.warn('Stats query timed out (retryable)', {
+        userId,
+        operation: error.operationName,
+        timeoutMs: error.timeoutMs,
+      });
+    } else {
+      logger.error('Error fetching invoice stats', {
+        userId,
+        error: error.original?.sqlMessage || error.message,
+        stack: error.stack,
+      });
+    }
     throw error;
   }
 };

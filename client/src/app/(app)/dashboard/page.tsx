@@ -3,19 +3,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useSession, signOut } from 'next-auth/react'; // ✅ CHANGED: Added signOut
+import { useSession, signOut } from 'next-auth/react';
 import { 
-  Plus, 
-  Search, 
-  FileText, 
-  Clock, 
-  CheckCircle, 
-  TrendingUp,
-  ArrowUpRight,
-  Loader,
-  MoreHorizontal,
-  ChevronLeft,
-  ChevronRight,
+  Plus, Search, FileText, Clock, CheckCircle, TrendingUp,
+  ArrowUpRight, Loader, MoreHorizontal, ChevronLeft, ChevronRight,
   LucideIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -33,12 +24,7 @@ interface Invoice {
 interface InvoicesResponse {
   success: boolean;
   data: Invoice[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    pages: number;
-  };
+  pagination: { total: number; page: number; limit: number; pages: number };
 }
 
 interface StatsResponse {
@@ -80,183 +66,115 @@ const defaultStats: Stat[] = [
 ];
 
 const formatCurrency = (value: number): string => {
-  if (value >= 1000000) {
-    return `₦${(value / 1000000).toFixed(1)}M`;
-  }
-  if (value >= 1000) {
-    return `₦${(value / 1000).toFixed(1)}K`;
-  }
+  if (value >= 1000000) return `₦${(value / 1000000).toFixed(1)}M`;
+  if (value >= 1000) return `₦${(value / 1000).toFixed(1)}K`;
   return `₦${value}`;
 };
 
-const mapApiStatsToStats = (apiData: StatsResponse['data']): Stat[] => {
-  return [
-    { 
-      label: 'Total Invoices', 
-      value: apiData.totalInvoices.toString(), 
-      change: '+0%', 
-      icon: FileText, 
-      iconColor: 'text-primary-600', 
-      bgColor: 'bg-primary-50' 
-    },
-    { 
-      label: 'Pending', 
-      value: formatCurrency(apiData.pendingAmount), 
-      change: '+0%', 
-      icon: Clock, 
-      iconColor: 'text-secondary-600', 
-      bgColor: 'bg-secondary-50' 
-    },
-    { 
-      label: 'Paid This Month', 
-      value: formatCurrency(apiData.paidThisMonth), 
-      change: '+0%', 
-      icon: CheckCircle, 
-      iconColor: 'text-primary-600', 
-      bgColor: 'bg-primary-50' 
-    },
-    { 
-      label: 'Growth', 
-      value: `${apiData.growthPercentage > 0 ? '+' : ''}${apiData.growthPercentage.toFixed(1)}%`, 
-      change: '+0%', 
-      icon: TrendingUp, 
-      iconColor: 'text-primary-600', 
-      bgColor: 'bg-primary-50' 
-    },
-  ];
-};
+const mapApiStatsToStats = (apiData: StatsResponse['data']): Stat[] => [
+  { label: 'Total Invoices', value: apiData.totalInvoices.toString(), change: '+0%', icon: FileText, iconColor: 'text-primary-600', bgColor: 'bg-primary-50' },
+  { label: 'Pending', value: formatCurrency(apiData.pendingAmount), change: '+0%', icon: Clock, iconColor: 'text-secondary-600', bgColor: 'bg-secondary-50' },
+  { label: 'Paid This Month', value: formatCurrency(apiData.paidThisMonth), change: '+0%', icon: CheckCircle, iconColor: 'text-primary-600', bgColor: 'bg-primary-50' },
+  { label: 'Growth', value: `${apiData.growthPercentage > 0 ? '+' : ''}${apiData.growthPercentage.toFixed(1)}%`, change: '+0%', icon: TrendingUp, iconColor: 'text-primary-600', bgColor: 'bg-primary-50' },
+];
 
 export default function Dashboard() {
-  const { data: session } = useSession();
-  const accessToken = (session as { accessToken?: string })?.accessToken;
-  
+  const { data: session, status: sessionStatus } = useSession();
+  const accessToken = session?.accessToken;
+
   const [stats, setStats] = useState<Stat[]>(defaultStats);
-  const [statsLoading, setStatsLoading] = useState(true);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const limit = 10;
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [status, setStatus] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [pagination, setPagination] = useState<Pagination>({ total: 0, pages: 0 });
 
+  // Debounce search
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 500);
+    const timer = setTimeout(() => setDebouncedSearch(search), 400);
     return () => clearTimeout(timer);
   }, [search]);
 
-  // ✅ CHANGED: Add 401 handling to fetchStats
+  // ✅ Single loading state, clean fetch
   useEffect(() => {
-    const fetchStats = async () => {
-      if (!accessToken) {
-        setStatsLoading(false);
-        return;
-      }
+    if (sessionStatus !== 'authenticated' || !accessToken) {
+      return;
+    }
 
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/invoices/stats`,
-          {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          }
-        );
-
-        // ✅ NEW: Handle 401 token expiration
-        if (response.status === 401) {
-          toast.error('Session expired. Please login again.');
-          await signOut({ callbackUrl: '/login' });
-          return;
-        }
-
-        if (!response.ok) {
-          toast.error('Failed to fetch stats');
-          setStatsLoading(false);
-          return;
-        }
-
-        const data: StatsResponse = await response.json();
-        setStats(mapApiStatsToStats(data.data));
-      } catch (error) {
-        toast.error('Error loading statistics');
-        console.error('Stats fetch error:', error);
-      } finally {
-        setStatsLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, [accessToken]);
-
-  // ✅ CHANGED: Add 401 handling to fetchInvoices
-  useEffect(() => {
     const controller = new AbortController();
 
-    const fetchInvoices = async () => {
-      if (!accessToken) {
-        setLoading(false);
-        return;
-      }
+    const fetchDashboardData = async () => {
       setLoading(true);
+
       try {
         const params = new URLSearchParams({
           page: page.toString(),
           limit: limit.toString(),
         });
-
         if (debouncedSearch) params.append('q', debouncedSearch);
-        if (status) params.append('paymentStatus', status);
+        if (statusFilter) params.append('paymentStatus', statusFilter);
 
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/invoices?${params}`,
-          {
+        const [statsRes, invoicesRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/invoices/stats`, {
             headers: { Authorization: `Bearer ${accessToken}` },
             signal: controller.signal,
-          }
-        );
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/invoices?${params}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            signal: controller.signal,
+          }),
+        ]);
 
-        // ✅ NEW: Handle 401 token expiration
-        if (response.status === 401) {
-          if (!controller.signal.aborted) {
-            toast.error('Session expired. Please login again.');
-            await signOut({ callbackUrl: '/login' });
-          }
+        // Handle 401 session expiry
+        if (statsRes.status === 401 || invoicesRes.status === 401) {
+          toast.error('Session expired. Please login again.');
+          await signOut({ callbackUrl: '/login' });
           return;
         }
 
-        if (!response.ok) {
-          if (!controller.signal.aborted) toast.error('Failed to fetch invoices');
-          return;
+        if (statsRes.ok) {
+          const statsData: StatsResponse = await statsRes.json();
+          setStats(mapApiStatsToStats(statsData.data));
         }
 
-        const data: InvoicesResponse = await response.json();
-        if (!controller.signal.aborted) {
-          setInvoices(data.data);
+        if (invoicesRes.ok) {
+          const invData: InvoicesResponse = await invoicesRes.json();
+          setInvoices(invData.data);
           setPagination({
-            total: data.pagination.total,
-            pages: data.pagination.pages,
+            total: invData.pagination.total,
+            pages: invData.pagination.pages,
           });
+        } else if (!controller.signal.aborted) {
+          toast.error('Failed to load invoices');
         }
       } catch (error) {
         if ((error as Error).name !== 'AbortError' && !controller.signal.aborted) {
-          toast.error('An error occurred');
+          toast.error('Failed to load dashboard data');
+          console.error(error);
         }
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchInvoices();
+    fetchDashboardData();
     return () => controller.abort();
-  }, [page, debouncedSearch, status, accessToken, limit]);
+  }, [sessionStatus, accessToken, page, debouncedSearch, statusFilter, limit]);
 
   const handlePrevPage = useCallback(() => { 
     if (page > 1) setPage(page - 1); 
   }, [page]);
-  
+
   const handleNextPage = useCallback(() => { 
     if (page < pagination.pages) setPage(page + 1); 
   }, [page, pagination.pages]);
+
+  const isLoading = sessionStatus === 'loading' || loading;
 
   return (
     <div className="space-y-8">
@@ -265,12 +183,14 @@ export default function Dashboard() {
         <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
           Welcome back, {session?.user?.businessName || 'there'}
         </h1>
-        <p className="text-neutral-500 mt-1.5 text-sm sm:text-base">Here&apos;s what&apos;s happening with your business today.</p>
+        <p className="text-neutral-500 mt-1.5 text-sm sm:text-base">
+          Here&apos;s what&apos;s happening with your business today.
+        </p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {statsLoading ? (
+        {loading ? (
           Array(4).fill(0).map((_, i) => (
             <div key={i} className="bg-white border border-neutral-200 rounded-xl p-5 animate-pulse">
               <div className="w-10 h-10 rounded-lg bg-neutral-200 mb-4" />
@@ -308,33 +228,26 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold text-neutral-900">Recent Invoices</h2>
           <p className="text-sm text-neutral-500 mt-0.5">Manage and track your latest invoices</p>
         </div>
-        <Link
-          href="/invoices/new"
-          className="inline-flex items-center justify-center gap-2 font-semibold text-sm bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white px-5 py-2.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-        >
-          <Plus className="w-4 h-4" />
-          Create Invoice
-        </Link>
-      </div>
+       </div>
 
       {/* Invoice Section */}
       <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm">
         {/* Filter Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 border-b border-neutral-200 bg-neutral-50/50">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
             <input
               type="text"
               placeholder="Search invoices..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="w-full pl-9 pr-4 py-2 bg-white border border-neutral-200 rounded-lg text-sm text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all"
+              className="w-full pl-9 pr-4 py-2 bg-white border border-neutral-200 rounded-lg text-sm text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all min-h-[44px]"
             />
           </div>
           <select
-            value={status}
-            onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-            className="inline-flex items-center text-sm font-medium text-neutral-700 bg-white border border-neutral-300 px-4 py-2 rounded-lg hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all cursor-pointer"
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            className="inline-flex items-center text-sm font-medium text-neutral-700 bg-white border border-neutral-300 px-4 py-2 rounded-lg hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all cursor-pointer min-h-[44px]"
           >
             <option value="">All Status</option>
             <option value="paid">Paid</option>
@@ -343,14 +256,14 @@ export default function Dashboard() {
         </div>
 
         {/* Loading State */}
-        {loading && (
-          <div className="flex items-center justify-center py-16">
+        {isLoading && (
+          <div className="flex items-center justify-center py-20">
             <Loader className="w-6 h-6 text-primary-500 animate-spin" />
           </div>
         )}
 
         {/* Content */}
-        {!loading && (
+        {!isLoading && (
           <>
             {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
@@ -366,8 +279,8 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
-                  {invoices?.length > 0 ? invoices.map((inv) => {
-                    const badge = statusBadge[inv?.paymentStatus] || statusBadge.pending;
+                  {invoices.length > 0 ? invoices.map((inv) => {
+                    const badge = statusBadge[inv.paymentStatus] || statusBadge.pending;
                     return (
                       <tr key={inv.id} className="hover:bg-neutral-50/80 transition-colors">
                         <td className="px-5 py-4">
@@ -376,8 +289,16 @@ export default function Dashboard() {
                           </Link>
                         </td>
                         <td className="px-5 py-4 text-neutral-700 font-medium">{inv.customerName}</td>
-                        <td className="px-5 py-4 text-neutral-500 text-sm">{new Date(inv.issueDate)?.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                        <td className="px-5 py-4 text-neutral-900 font-semibold text-right tabular-nums">₦{inv.totalAmount?.toLocaleString()}</td>
+                        <td className="px-5 py-4 text-neutral-500 text-sm">
+                          {new Date(inv.issueDate).toLocaleDateString('en-NG', { 
+                            day: 'numeric', 
+                            month: 'short', 
+                            year: 'numeric' 
+                          })}
+                        </td>
+                        <td className="px-5 py-4 text-neutral-900 font-semibold text-right tabular-nums">
+                          ₦{inv.totalAmount.toLocaleString()}
+                        </td>
                         <td className="px-5 py-4 text-center">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${badge.bg} ${badge.text} ${badge.border}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
@@ -385,7 +306,10 @@ export default function Dashboard() {
                           </span>
                         </td>
                         <td className="px-5 py-4 text-center">
-                          <button className="p-1.5 rounded-md hover:bg-neutral-200 transition-colors text-neutral-400 hover:text-neutral-600" aria-label="More actions">
+                          <button 
+                            className="p-1.5 rounded-md hover:bg-neutral-200 transition-colors text-neutral-400 hover:text-neutral-600 min-h-[44px] min-w-[44px] flex items-center justify-center" 
+                            aria-label="More actions"
+                          >
                             <MoreHorizontal className="w-4 h-4" />
                           </button>
                         </td>
@@ -408,12 +332,14 @@ export default function Dashboard() {
 
             {/* Mobile Cards */}
             <div className="md:hidden divide-y divide-neutral-100">
-              {invoices?.length > 0 ? invoices.map((inv) => {
-                const badge = statusBadge[inv?.paymentStatus] || statusBadge.pending;
+              {invoices.length > 0 ? invoices.map((inv) => {
+                const badge = statusBadge[inv.paymentStatus] || statusBadge.pending;
                 return (
                   <div key={inv.id} className="p-4 hover:bg-neutral-50/80 transition-colors">
                     <div className="flex items-center justify-between mb-3">
-                      <Link href={`/invoices/${inv.id}`} className="font-medium text-primary-600">{inv.invoiceNumber}</Link>
+                      <Link href={`/invoices/${inv.id}`} className="font-medium text-primary-600">
+                        {inv.invoiceNumber}
+                      </Link>
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${badge.bg} ${badge.text} ${badge.border}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
                         {badge.label}
@@ -421,11 +347,21 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-neutral-900 font-medium">{inv.customerName}</p>
-                      <p className="text-neutral-900 font-semibold tabular-nums">₦{inv.totalAmount?.toLocaleString()}</p>
+                      <p className="text-neutral-900 font-semibold tabular-nums">
+                        ₦{inv.totalAmount.toLocaleString()}
+                      </p>
                     </div>
                     <div className="flex items-center justify-between text-sm text-neutral-500">
-                      <span>{new Date(inv.issueDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                      <Link href={`/invoices/${inv.id}`} className="text-primary-600 hover:text-primary-700 font-medium text-sm">View details</Link>
+                      <span>
+                        {new Date(inv.issueDate).toLocaleDateString('en-NG', { 
+                          day: 'numeric', 
+                          month: 'short', 
+                          year: 'numeric' 
+                        })}
+                      </span>
+                      <Link href={`/invoices/${inv.id}`} className="text-primary-600 hover:text-primary-700 font-medium text-sm">
+                        View details
+                      </Link>
                     </div>
                   </div>
                 );
@@ -437,14 +373,16 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* Footer */}
+            {/* Pagination Footer */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4 border-t border-neutral-200 bg-neutral-50/30">
-              <span className="text-sm text-neutral-500">Showing {invoices.length} of {pagination.total} invoices</span>
+              <span className="text-sm text-neutral-500">
+                Showing {invoices.length} of {pagination.total} invoices
+              </span>
               <div className="flex items-center gap-2">
                 <button 
                   onClick={handlePrevPage}
                   disabled={page === 1}
-                  className="p-2 rounded-lg border border-neutral-300 bg-white hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400"
+                  className="p-2 rounded-lg border border-neutral-300 bg-white hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-[44px] min-w-[44px] flex items-center justify-center"
                   aria-label="Previous page"
                 >
                   <ChevronLeft className="w-4 h-4 text-neutral-600" />
@@ -455,7 +393,7 @@ export default function Dashboard() {
                 <button 
                   onClick={handleNextPage}
                   disabled={page >= pagination.pages}
-                  className="p-2 rounded-lg border border-neutral-300 bg-white hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400"
+                  className="p-2 rounded-lg border border-neutral-300 bg-white hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-[44px] min-w-[44px] flex items-center justify-center"
                   aria-label="Next page"
                 >
                   <ChevronRight className="w-4 h-4 text-neutral-600" />

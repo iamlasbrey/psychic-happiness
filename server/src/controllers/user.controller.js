@@ -35,54 +35,15 @@ const createUser = asyncHandler(async (req, res) => {
   });
 });
 
-const refreshToken = asyncHandler(async (req, res, next) => {
-  try {
-    const { refreshToken: token } = req.body;
+const refreshToken = asyncHandler(async (req, res) => {
+  const { refreshToken: token } = req.body;
+  const result = await userService.refreshAccessToken(token);
 
-    // Verify refresh token
-    let decoded;
-    try {
-      decoded = jwt.verify(token, config.JWT_REFRESH_SECRET);
-    } catch (error) {
-      const err = new Error('Invalid or expired refresh token');
-      err.statusCode = 401;
-      throw err;
-    }
-
-    // Verify user still exists
-    const user = await userService.getUserById(decoded.id);
-
-    if (!user) {
-      const err = new Error('User not found');
-      err.statusCode = 404;
-      throw err;
-    }
-
-    // Generate new access token
-    const accessToken = jwt.sign({ id: decoded.id }, config.JWT_SECRET, {
-      expiresIn: '24h',
-    });
-
-    // Optionally generate new refresh token
-    const newRefreshToken = jwt.sign(
-      { id: decoded.id },
-      config.JWT_REFRESH_SECRET,
-      {
-        expiresIn: '7d',
-      },
-    );
-
-    res.json({
-      success: true,
-      message: 'Token refreshed successfully',
-      data: {
-        accessToken,
-        refreshToken: newRefreshToken,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
+  res.json({
+    success: true,
+    message: 'Token refreshed successfully',
+    data: result,
+  });
 });
 
 const loginUser = asyncHandler(async (req, res) => {
