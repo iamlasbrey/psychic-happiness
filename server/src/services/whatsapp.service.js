@@ -4,7 +4,8 @@ const config = require('../config');
 const { parseInvoiceFromAI } = require('./aiMessageParser.service');
 const invoiceService = require('./invoice.service');
 const { User, DraftInvoice, Invoice } = require('../models');
-const cacheManager = require('../utils/cacheManager');
+// ✅ CACHE: Commented out for now
+// const cacheManager = require('../utils/cacheManager');
 const draftService = require('./draftInvoice.service');
 const logger = require('../config/logger');
 const { sanitizeWhatsAppMessage } = require('../utils/sanitizer');
@@ -16,10 +17,11 @@ const QUOTA_EXCEEDED_MSG = (limit) =>
   `Daily invoice limit (${limit}) reached. Please try again tomorrow.`;
 const DAILY_INVOICE_LIMIT = 10;
 
-// ✅ NEW: Timeout constants (in milliseconds)
+// ✅ Timeout constants (milliseconds)
 const TWILIO_TIMEOUT = 30000; // 30 seconds
 const PDF_TIMEOUT = 60000; // 60 seconds
 
+// Message template for PDF download and portal access
 const PDF_AND_PORTAL_MSG = (invoiceId, invoiceNumber, appUrl, portalUrl) => {
   const baseUrl = appUrl || 'http://localhost:5000';
   const dashboardUrl = portalUrl || `${baseUrl}/dashboard`;
@@ -69,6 +71,7 @@ const handleIncomingMessage = async (from, messageBody) => {
     messageBody = sanitizeWhatsAppMessage(messageBody);
 
     logger.info('Incoming WhatsApp message', { from, messageBody });
+
     if (messageBody.toUpperCase() === 'CONFIRM') {
       await handleConfirmation(from);
       return;
@@ -79,20 +82,24 @@ const handleIncomingMessage = async (from, messageBody) => {
       return;
     }
 
-    const cachedResult = cacheManager.getCachedResult(messageBody);
-    if (cachedResult) {
-      const { data } = cachedResult;
-      console.log('Using cached AI result for message:', data);
-      await sendWhatsAppMessage(
-        from,
-        `Invoice Created!\nInvoice #: ${data?.invoiceNumber}\nTotal: ₦${data?.totalAmount.toFixed(2)}`,
-      );
-      return;
-    }
+    // ✅ CACHE LOOKUP — COMMENTED OUT FOR NOW
+    // const cachedResult = cacheManager.getCachedResult(messageBody);
+    // if (cachedResult) {
+    //   const { data } = cachedResult;
+    //   console.log('Using cached AI result for message:', data);
+    //   console.log('Using:', cachedResult);
+    //
+    //   sendWhatsAppMessage(
+    //     from,
+    //     `Invoice Created!\nInvoice #: ${data?.invoiceNumber}\nTotal: ₦${data?.totalAmount.toFixed(2)}`,
+    //   );
+    //
+    //   return;
+    // }
 
     const phoneNumber = from.replace('whatsapp:', '').replace('whatsapp', '');
     const user = await User.findOne({
-      where: { phone: phoneNumber },
+      where: { phoneNumber: phoneNumber }, // ✅ Fixed: use 'phoneNumber' not 'phone'
     });
 
     if (!user) {
@@ -144,10 +151,11 @@ const handleIncomingMessage = async (from, messageBody) => {
 
     await sendWhatsAppMessage(from, confirmationText);
 
-    cacheManager.setCachedResult(messageBody, {
-      draftId: draft.id,
-      draft,
-    });
+    // ✅ CACHE SET — COMMENTED OUT FOR NOW
+    // cacheManager.setCachedResult(messageBody, {
+    //   draftId: draft.id,
+    //   draft,
+    // });
   } catch (error) {
     logger.error('Error in handleIncomingMessage', {
       error: error.message,
@@ -166,10 +174,11 @@ const handleConfirmation = async (from) => {
     logger.info('Handling invoice confirmation', { from });
     const phoneNumber = from.replace('whatsapp:', '').replace('whatsapp', '');
     const user = await User.findOne({
-      where: { phone: phoneNumber },
+      where: { phoneNumber: phoneNumber }, // ✅ Fixed: use 'phoneNumber' not 'phone'
     });
 
     if (!user) {
+      logger.warn('User not found for confirmation', { from });
       await sendWhatsAppMessage(from, 'User not found.');
       return;
     }
@@ -201,7 +210,7 @@ const handleConfirmation = async (from) => {
       invoiceId: invoice.id,
     });
 
-    // ✅ CHANGED: Wrap PDF generation with timeout
+    // ✅ PDF generation with timeout
     try {
       const pdfPath = await withTimeout(
         pdfService.generateInvoicePdf(user.id, invoice.id),
@@ -223,9 +232,10 @@ const handleConfirmation = async (from) => {
         invoiceId: invoice.id,
         error: pdfError.message,
       });
+      // Continue: invoice is valid even if PDF fails
     }
 
-    // ✅ CHANGED: Wrap WhatsApp message with timeout
+    // ✅ WhatsApp message send with timeout
     try {
       await withTimeout(
         sendWhatsAppMessage(
@@ -241,6 +251,7 @@ const handleConfirmation = async (from) => {
         invoiceId: invoice.id,
         error: whatsappError.message,
       });
+      // Continue: user still has invoice created
     }
   } catch (error) {
     logger.error('Error in handleConfirmation', {
@@ -259,7 +270,7 @@ const handleRejection = async (from) => {
   try {
     const phoneNumber = from.replace('whatsapp:', '').replace('whatsapp', '');
     const user = await User.findOne({
-      where: { phone: phoneNumber },
+      where: { phoneNumber: phoneNumber }, // ✅ Fixed: use 'phoneNumber' not 'phone'
     });
 
     if (!user) {

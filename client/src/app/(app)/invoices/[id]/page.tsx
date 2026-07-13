@@ -442,20 +442,6 @@ export default function InvoicePage() {
             <Download className="w-4 h-4" />
             <span className="hidden sm:inline">Download</span>
           </button>
-          {!isPaid && (
-            <button
-              onClick={handleSendInvoice}
-              disabled={sending}
-              className="inline-flex items-center gap-2 font-medium text-sm text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50 px-4 py-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 disabled:opacity-50 min-h-11"
-            >
-              {sending ? (
-                <Loader className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-              <span className="hidden sm:inline">Send</span>
-            </button>
-          )}
           
           {/* ✅ NEW: WhatsApp Share Button (MVP) */}
           <button

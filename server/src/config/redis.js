@@ -5,7 +5,7 @@ const config = require('./index');
 
 // Redis Cloud: Use URL + TLS + reconnect strategy
 const client = redis.createClient({
-  url: config.REDIS_URL, // rediss://default:PASS@host:port
+  url: config.REDIS_HOST, // rediss://default:PASS@host:port
   socket: {
     reconnectStrategy: (retries) => {
       if (retries > 10) {

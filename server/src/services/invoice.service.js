@@ -565,7 +565,6 @@ const getInvoiceStats = async (userId) => {
     logger.debug('Fetching invoice stats', { userId });
 
     const now = new Date();
-    // ✅ Use UTC consistently to avoid timezone drift
     const startOfMonth = new Date(
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
     );
@@ -579,153 +578,76 @@ const getInvoiceStats = async (userId) => {
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999),
     );
 
-    // ✅ Use Sequelize.where + Sequelize.fn for safe parameterized queries
-    const result = await withTimeout(
+    const [totalStats, thisMonthStats, lastMonthStats] = await Promise.all([
+      // Total + Pending
       Invoice.findOne({
         where: { userId },
         attributes: [
-          // Total invoices
           [Sequelize.fn('COUNT', Sequelize.col('id')), 'totalInvoices'],
-
-          // Pending amount: SUM where paymentStatus = 'unpaid'
           [
             Sequelize.fn(
               'SUM',
-              Sequelize.fn(
-                'IF',
-                Sequelize.where(Sequelize.col('paymentStatus'), 'unpaid'),
-                Sequelize.col('totalAmount'),
-                0,
+              Sequelize.literal(
+                "CASE WHEN paymentStatus = 'unpaid' THEN totalAmount ELSE 0 END",
               ),
             ),
             'pendingAmount',
           ],
+        ],
+        raw: true,
+      }),
 
-          // Paid this month: SUM where paid AND paidAt in range
+      // This month paid + count
+      Invoice.findOne({
+        where: {
+          userId,
+          createdAt: { [Op.between]: [startOfMonth, endOfMonth] },
+        },
+        attributes: [
+          [Sequelize.fn('COUNT', Sequelize.col('id')), 'thisMonthCount'],
           [
             Sequelize.fn(
               'SUM',
-              Sequelize.fn(
-                'IF',
-                Sequelize.and(
-                  Sequelize.where(Sequelize.col('paymentStatus'), 'paid'),
-                  Sequelize.where(Sequelize.col('paidAt'), '>=', startOfMonth),
-                  Sequelize.where(Sequelize.col('paidAt'), '<=', endOfMonth),
-                ),
-                Sequelize.col('totalAmount'),
-                0,
+              Sequelize.literal(
+                "CASE WHEN paymentStatus = 'paid' THEN totalAmount ELSE 0 END",
               ),
             ),
             'paidThisMonth',
           ],
-
-          // Count this month: COUNT where createdAt in range
-          [
-            Sequelize.fn(
-              'COUNT',
-              Sequelize.fn(
-                'IF',
-                Sequelize.and(
-                  Sequelize.where(
-                    Sequelize.col('createdAt'),
-                    '>=',
-                    startOfMonth,
-                  ),
-                  Sequelize.where(Sequelize.col('createdAt'), '<=', endOfMonth),
-                ),
-                1,
-                null,
-              ),
-            ),
-            'thisMonthCount',
-          ],
-
-          // Count last month: COUNT where createdAt in range
-          [
-            Sequelize.fn(
-              'COUNT',
-              Sequelize.fn(
-                'IF',
-                Sequelize.and(
-                  Sequelize.where(
-                    Sequelize.col('createdAt'),
-                    '>=',
-                    startOfLastMonth,
-                  ),
-                  Sequelize.where(
-                    Sequelize.col('createdAt'),
-                    '<=',
-                    endOfLastMonth,
-                  ),
-                ),
-                1,
-                null,
-              ),
-            ),
-            'lastMonthCount',
-          ],
         ],
         raw: true,
       }),
-      DB_QUERY_TIMEOUT, // ✅ Use tiered timeout
-      'Invoice stats aggregation',
-    );
 
-    const data = result || {};
+      // Last month count (for growth)
+      Invoice.findOne({
+        where: {
+          userId,
+          createdAt: { [Op.between]: [startOfLastMonth, endOfLastMonth] },
+        },
+        attributes: [
+          [Sequelize.fn('COUNT', Sequelize.col('id')), 'lastMonthCount'],
+        ],
+        raw: true,
+      }),
+    ]);
 
-    // ✅ Defensive coercion + rounding
-    const totalInvoices = Number(data.totalInvoices) || 0;
-    const pendingAmount = parseFloat(
-      (Number(data.pendingAmount) || 0).toFixed(2),
-    );
-    const paidThisMonth = parseFloat(
-      (Number(data.paidThisMonth) || 0).toFixed(2),
-    );
-    const thisMonthCount = Number(data.thisMonthCount) || 0;
-    const lastMonthCount = Number(data.lastMonthCount) || 0;
+    const total = parseInt(totalStats?.totalInvoices || 0);
+    const pending = parseFloat(totalStats?.pendingAmount || 0);
+    const paidThisMonth = parseFloat(thisMonthStats?.paidThisMonth || 0);
+    const thisMonth = parseInt(thisMonthStats?.thisMonthCount || 0);
+    const lastMonth = parseInt(lastMonthStats?.lastMonthCount || 0);
 
-    // ✅ Safe growth calculation
     const growthPercentage =
-      lastMonthCount === 0
-        ? thisMonthCount > 0
-          ? 100
-          : 0
-        : parseFloat(
-            (
-              ((thisMonthCount - lastMonthCount) / lastMonthCount) *
-              100
-            ).toFixed(1),
-          );
-
-    logger.info('Invoice stats retrieved', {
-      userId,
-      totalInvoices,
-      pendingAmount,
-      paidThisMonth,
-      growthPercentage,
-    });
+      lastMonth > 0 ? ((thisMonth - lastMonth) / lastMonth) * 100 : 0;
 
     return {
-      totalInvoices,
-      pendingAmount,
-      paidThisMonth,
-      growthPercentage,
+      totalInvoices: total,
+      pendingAmount: pending,
+      paidThisMonth: paidThisMonth,
+      growthPercentage: parseFloat(growthPercentage.toFixed(1)),
     };
   } catch (error) {
-    // ✅ Distinguish timeout vs genuine error
-    if (isTimeoutError(error)) {
-      logger.warn('Stats query timed out (retryable)', {
-        userId,
-        operation: error.operationName,
-        timeoutMs: error.timeoutMs,
-      });
-    } else {
-      logger.error('Error fetching invoice stats', {
-        userId,
-        error: error.original?.sqlMessage || error.message,
-        stack: error.stack,
-      });
-    }
+    logger.error('Invoice stats error', { userId, error: error.message });
     throw error;
   }
 };
