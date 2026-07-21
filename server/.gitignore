@@ -24,3 +24,14 @@ logs/
 *.log
 
 .alpackages/
+
+# Sensitive / credentials
+.env*
+.env.*.local
+*.pem
+*.key
+*.p12
+credentials.json
+secrets.*
+.vscode/
+/uploads/
