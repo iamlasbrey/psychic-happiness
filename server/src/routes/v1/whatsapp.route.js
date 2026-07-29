@@ -4,13 +4,17 @@ const {
   receiveMessage,
   verifyWebhook,
 } = require('../../controllers/whatsapp.controller');
-const { invoiceLimiter } = require('../../middleware/rateLimiter');
+const { webhookLimiter } = require('../../middleware/rateLimiter'); // ✅ ADD THIS
 const { validateTwilioRequest } = require('../../middleware/twilioValidator');
 
 const router = express.Router();
 
-// POST /whatsapp/webhook - Receive WhatsApp messages from Twilio
-router.post('/webhook', validateTwilioRequest, invoiceLimiter, receiveMessage);
+router.post(
+  '/webhook',
+  webhookLimiter, // ✅ Limit by sender phone FIRST
+  validateTwilioRequest, // Then validate Twilio signature
+  receiveMessage, // Finally, handle the message
+);
 
 // GET /whatsapp/webhook - Twilio verification
 router.get('/webhook', verifyWebhook);

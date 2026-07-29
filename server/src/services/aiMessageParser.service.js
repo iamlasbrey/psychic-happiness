@@ -46,19 +46,19 @@ const validateInvoiceData = (data) => {
 
 const parseInvoiceFromAI = async (messageBody) => {
   try {
+    if (!messageBody || typeof messageBody !== 'string') {
+      return {
+        success: false,
+        error: 'messageBody must be a non-empty string',
+      };
+    }
+
     logger.debug('Parsing message with AI', {
       messageLength: messageBody.length,
     });
 
     if (!config.OPENROUTER_API_KEY) {
       throw new Error('OPENROUTER_API_KEY environment variable is not set');
-    }
-
-    if (!messageBody || typeof messageBody !== 'string') {
-      return {
-        success: false,
-        error: 'messageBody must be a non-empty string',
-      };
     }
 
     // Build messages for AI
@@ -154,19 +154,8 @@ If invalid, return: { "error": "error message" }`,
       return { success: false, error: parsed.error };
     }
 
-    // Validate data structure
+    // Validate data structure first
     const validation = validateInvoiceData(parsed);
-    const mathValidation = invoiceValidator.validateInvoiceMath(parsed);
-
-    if (!mathValidation.isValid) {
-      return {
-        success: false,
-        error: `Math validation failed: ${mathValidation.errors.join('; ')}`,
-      };
-    }
-
-    // Use cleaned data
-    return { success: true, data: mathValidation.data };
     if (!validation.isValid) {
       logger.warn('Message failed validation', { errors: validation.errors });
       return {
@@ -174,10 +163,19 @@ If invalid, return: { "error": "error message" }`,
         error: `Validation failed: ${validation.errors.join('; ')}`,
       };
     }
+
+    const mathValidation = invoiceValidator.validateInvoiceMath(parsed);
+    if (!mathValidation.isValid) {
+      return {
+        success: false,
+        error: `Math validation failed: ${mathValidation.errors.join('; ')}`,
+      };
+    }
+
     logger.info('Message parsed successfully', {
       itemCount: parsed.items?.length,
     });
-    return { success: true, data: parsed };
+    return { success: true, data: mathValidation.data };
   } catch (error) {
     logger.error('OpenRouter Parser error:', {
       message: error.message,

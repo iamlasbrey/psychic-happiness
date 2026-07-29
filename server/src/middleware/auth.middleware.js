@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
-const User = require('../models/user.model'); // Your User model
-const config = require('../config'); // Your config file with JWT_SECRET
+const User = require('../models/user.model');
+const config = require('../config');
+const logger = require('../utils/logger');
 
 /**
  * Middleware to authenticate routes by verifying JWT token.
@@ -36,7 +37,7 @@ const authenticate = asyncHandler(async (req, res, next) => {
       // 4. Token is valid, user found, proceed to the next middleware/controller
       return next();
     } catch (error) {
-      console.error('Token verification error:', error); // Log the specific error
+      logger.error('Token verification error:', error);
       res.status(401); // Unauthorized
       throw new Error('Not authorized, token failed');
     }

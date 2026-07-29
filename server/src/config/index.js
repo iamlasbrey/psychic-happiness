@@ -56,7 +56,10 @@ module.exports = {
   AI_APP_NAME: process.env.APP_NAME || 'Invoice Parser SaaS',
   OPENROUTER_FALLBACK_MODEL:
     process.env.OPENROUTER_FALLBACK_MODEL || 'openrouter/auto ',
-  AI_APP_URL: process.env.AI_APP_URL,
+  AI_APP_URL:
+    process.env.AI_APP_URL || process.env.APP_URL || 'http://localhost:5000',
+  APP_URL:
+    process.env.APP_URL || process.env.AI_APP_URL || 'http://localhost:5000',
   AI_MODE: process.env.AI_MODE || 'openrouter', // 'mock' | 'ollama' | 'openrouter'
   TWILIO_WEBHOOK_URL: process.env.TWILIO_WEBHOOK_URL,
 

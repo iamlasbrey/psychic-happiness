@@ -3,8 +3,19 @@ const config = require('./src/config');
 const app = require('./src/app');
 const logger = require('./src/utils/logger');
 const { testDbConnection } = require('./src/config/db');
+const redis = require('./src/config/redis');
 
 // `sequelize` instance is still usable via require('./src/config/db') if needed
+
+const initializeRedis = async () => {
+  try {
+    await redis.connect();
+    logger.info('Redis connected successfully.');
+  } catch (err) {
+    logger.error('[Redis] Startup failed:', err.message);
+    // Optional: do not exit; cache operations can continue to fail safely.
+  }
+};
 
 /**
  * Sync database models
@@ -33,8 +44,9 @@ const startServer = () => {
 // --- Main Startup Sequence ---
 const initializeApp = async () => {
   await testDbConnection(); // 1. Test DB connection
-  await syncDatabase(); // 2. Sync DB models
-  startServer(); // 3. Start Express server
+  await initializeRedis(); // 2. Initialize Redis connection once
+  await syncDatabase(); // 3. Sync DB models
+  startServer(); // 4. Start Express server
 };
 
 initializeApp(); // Run the startup sequence

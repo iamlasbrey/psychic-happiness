@@ -31,6 +31,26 @@ const PDF_AND_PORTAL_MSG = (invoiceId, invoiceNumber, appUrl, portalUrl) => {
 Manage payments in your account: ${dashboardUrl}`;
 };
 
+const getFriendlyConfirmationError = (message) => {
+  if (!message) {
+    return 'Please try again.';
+  }
+
+  if (message.includes('Phone must be')) {
+    return 'Please use a valid Nigerian phone number format: 09012345678, 2348012345678, or +2348012345678.';
+  }
+
+  if (message.includes('customerPhone must start with +234 or 0')) {
+    return 'Please use a Nigerian phone number starting with 0 or +234, for example 09012345678 or +2348012345678.';
+  }
+
+  if (message.includes('not found')) {
+    return 'No invoice draft was found to confirm. Please send your invoice details first.';
+  }
+
+  return message;
+};
+
 const client = twilio(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN);
 
 const checkUserDailyQuota = async (userId) => {
@@ -259,9 +279,11 @@ const handleConfirmation = async (from) => {
       stack: error.stack,
     });
     console.error('Error in handleConfirmation:', error);
+
+    const friendlyMessage = getFriendlyConfirmationError(error?.message);
     await sendWhatsAppMessage(
       from,
-      'Error confirming invoice. Please try again.',
+      `Unable to confirm the invoice. ${friendlyMessage}`,
     );
   }
 };

@@ -25,7 +25,7 @@ DraftInvoice.init(
     },
     customerPhone: {
       type: DataTypes.STRING(20),
-      allowNull: false,
+      allowNull: true,
     },
     items: {
       type: DataTypes.JSON,

@@ -93,14 +93,6 @@ const loginUser = async (phoneNumber, password) => {
     where: { phoneNumber: normalizedPhone },
   });
 
-  const profile = {
-    id: user.id,
-    phoneNumber: user.phoneNumber,
-    businessName: user.businessName,
-    businessRegistrationNumber: user.businessRegistrationNumber,
-    tin: user.tin,
-  };
-
   if (!user) {
     const error = new Error('Invalid phone or password');
     error.statusCode = 401;
